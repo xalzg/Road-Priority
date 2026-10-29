@@ -27,3 +27,4 @@ class DecisionCriterionPolicy
         return $actor->isAdmin();
     }
 }
+

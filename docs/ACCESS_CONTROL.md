@@ -63,3 +63,4 @@ Model [`User`](../backend/app/Models/User.php) mendefinisikan 4 peran resmi:
    - Sebelum menurunkan role atau menonaktifkan seorang pengguna ber-role `admin`, sistem melakukan query `lockForUpdate()` untuk menghitung jumlah `admin` aktif lainnya. Jika jumlahnya `0`, operasi dibatalkan dengan `409 Conflict` (`Cannot deactivate or demote the last active admin account.`).
 4. **Pembuatan Akun Admin Awal (`LocalAdminSeeder`):**
    - Untuk pengembangan lokal, jalankan `php artisan db:seed --class=LocalAdminSeeder`. Seeder membaca `INITIAL_ADMIN_EMAIL` dan `INITIAL_ADMIN_PASSWORD` dari `.env` lokal (atau membangkitkan password acak satu-kali-tampil di terminal apabila `INITIAL_ADMIN_PASSWORD` dikosongkan, sehingga tidak ada password produksi yang disimpan di Git).
+

@@ -66,3 +66,4 @@ class AuditLogService
         return $clean;
     }
 }
+

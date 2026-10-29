@@ -26,3 +26,4 @@ class UserPolicy
         return $actor->isAdmin();
     }
 }
+

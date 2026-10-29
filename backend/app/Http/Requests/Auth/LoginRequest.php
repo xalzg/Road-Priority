@@ -23,3 +23,4 @@ class LoginRequest extends FormRequest
         ];
     }
 }
+

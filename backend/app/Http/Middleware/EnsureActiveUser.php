@@ -23,3 +23,4 @@ class EnsureActiveUser
         return $next($request);
     }
 }
+

@@ -16,6 +16,7 @@ class DamageReport extends Model
     public const STATUS_NEEDS_INFO = 'needs_info';
     public const STATUS_VERIFIED = 'verified';
     public const STATUS_REJECTED = 'rejected';
+    public const STATUS_DUPLICATE = 'duplicate';
     public const STATUS_RESOLVED = 'resolved';
 
     public const STATUSES = [
@@ -24,9 +25,25 @@ class DamageReport extends Model
         self::STATUS_NEEDS_INFO,
         self::STATUS_VERIFIED,
         self::STATUS_REJECTED,
+        self::STATUS_DUPLICATE,
         self::STATUS_RESOLVED,
     ];
 
+    public const DAMAGE_TYPES = [
+        'lubang',
+        'berlubang',
+        'retak',
+        'permukaan_bergelombang',
+        'aspal_mengelupas',
+        'kerusakan_tepi_jalan',
+        'lainnya',
+    ];
+
+    /**
+     * Catatan Keamanan (PRD 04 §3.2 & §11):
+     * reporter_id, verified_by, dan status dikelola secara eksplisit oleh service layer
+     * agar pengguna tidak dapat memanipulasi pemilik laporan atau status melalui mass assignment.
+     */
     protected $fillable = [
         'report_code',
         'reporter_id',
@@ -97,4 +114,3 @@ class DamageReport extends Model
         return $this->hasMany(DamageAssessment::class, 'damage_report_id');
     }
 }
-

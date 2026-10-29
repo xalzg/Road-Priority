@@ -57,14 +57,15 @@
 | `POST` | `/api/users` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
 | `PATCH` | `/api/users/{user}` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
 | `GET` | `/api/audit-logs` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
-| `GET` | `/api/reports/{damageReport}` | Pemilik / Petugas / Admin (atau `verified` tanpa identitas pelapor) | **`implemented`** | PRD 03 |
-| `PATCH` | `/api/reports/{damageReport}/status` | Petugas, Admin (`role:officer,admin`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/reports/{reportIdentifier}` | Publik (jika `verified`/`resolved` non-demo) / Pemilik / Petugas / Admin | **`implemented`** | PRD 03 & PRD 04 |
+| `PATCH` | `/api/reports/{damageReport}/status` | Petugas, Admin (`role:officer,admin`) | **`implemented`** | PRD 03 & PRD 04 |
 | `GET` | `/api/criteria` | Petugas, Pakar, Admin (`role:officer,expert,admin`) | **`implemented`** | PRD 03 |
 | `POST` | `/api/criteria` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
-| `GET` | `/api/road-segments` | Publik | `planned` | PRD 04 |
-| `GET` | `/api/road-segments/{id}` | Publik | `planned` | PRD 04 |
-| `GET` | `/api/reports` | Publik (hanya `verified`) / Petugas & Admin (semua) | `planned` | PRD 04 |
-| `POST` | `/api/reports` | Pelapor, Petugas, Admin (`auth:sanctum`, throttle) | `planned` | PRD 04 |
+| `GET` | `/api/road-segments` | Publik (non-demo) / Petugas & Admin | **`implemented`** | PRD 04 |
+| `GET` | `/api/road-segments/{segmentIdentifier}` | Publik (non-demo) / Petugas & Admin | **`implemented`** | PRD 04 |
+| `GET` | `/api/reports` | Publik (hanya `verified`/`resolved` non-demo) / Pelapor (`mine=1`) / Petugas & Admin (semua) | **`implemented`** | PRD 04 |
+| `POST` | `/api/reports` | Pelapor, Petugas, Admin (`auth:sanctum`, `active.user`, `role:reporter,officer,admin`) | **`implemented`** | PRD 04 |
+| `GET` | `/api/reports/{damageReport}/photos/{reportPhoto}` | Publik (jika laporan `verified` & `is_public=true`) / Pemilik / Petugas & Admin | **`implemented`** | PRD 04 |
 | `GET` | `/api/criterion-weight-versions` | Petugas, Pakar, Admin | `planned` | PRD 05 |
 | `POST` | `/api/decision-runs` | Admin (atau Petugas berizin) | `planned` | PRD 05 |
 | `GET` | `/api/decision-runs` | Petugas, Pakar, Admin | `planned` | PRD 05 |

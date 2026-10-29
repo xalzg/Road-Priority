@@ -28,6 +28,7 @@ class UpdateReportStatusRequest extends FormRequest
                 Rule::requiredIf(function (): bool {
                     return in_array((string) $this->input('new_status'), [
                         DamageReport::STATUS_REJECTED,
+                        DamageReport::STATUS_DUPLICATE,
                         DamageReport::STATUS_NEEDS_INFO,
                         DamageReport::STATUS_RESOLVED,
                     ], true);
@@ -37,6 +38,13 @@ class UpdateReportStatusRequest extends FormRequest
                 'max:1000',
             ],
             'road_segment_id' => ['nullable', 'integer', 'exists:road_segments,id'],
+            'duplicate_of_id' => [
+                Rule::requiredIf(fn (): bool => (string) $this->input('new_status') === DamageReport::STATUS_DUPLICATE),
+                'nullable',
+                'integer',
+                'exists:damage_reports,id',
+            ],
+            'publish_photos' => ['sometimes', 'boolean'],
             'latitude' => ['sometimes', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'numeric', 'between:-180,180'],
         ];

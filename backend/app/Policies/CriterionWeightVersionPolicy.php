@@ -22,3 +22,4 @@ class CriterionWeightVersionPolicy
         return $actor->isAdmin();
     }
 }
+

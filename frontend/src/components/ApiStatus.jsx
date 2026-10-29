@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { getHealth } from '../services/healthService'
 
 const LABELS = {
-  loading: 'Memeriksa koneksiÃ¢â‚¬Â¦',
-  success: 'Terhubung',
-  error: 'Tidak terhubung',
+  loading: 'Memeriksa koneksi…',
+  success: 'API Terhubung',
+  error: 'API Terputus',
 }
 
 export default function ApiStatus() {
@@ -35,28 +35,22 @@ export default function ApiStatus() {
   const { status, message } = state
 
   return (
-    <section className="status-card" aria-live="polite">
-      <h2>Status backend</h2>
-      <p className={`status-badge status-${status}`}>
+    <div className="api-status-inline" aria-live="polite" title={message || LABELS[status]}>
+      <span className={`status-badge status-${status}`}>
         <span className="status-icon" aria-hidden="true">
-          {status === 'success' ? 'Ã¢Å“â€œ' : status === 'error' ? 'Ã¢Å“â€¢' : 'Ã¢â‚¬Â¦'}
+          {status === 'success' ? '✓' : status === 'error' ? '✕' : '…'}
         </span>
         {LABELS[status]}
-      </p>
-      {message && <p className="status-message">{message}</p>}
+      </span>
       {status === 'error' && (
-        <p className="status-hint">
-          Pastikan backend Laravel berjalan di http://127.0.0.1:8000 dan MySQL
-          XAMPP aktif.
-        </p>
+        <button
+          type="button"
+          className="btn-secondary btn-sm"
+          onClick={retry}
+        >
+          Coba lagi
+        </button>
       )}
-      <button
-        type="button"
-        onClick={retry}
-        disabled={status === 'loading'}
-      >
-        Coba lagi
-      </button>
-    </section>
+    </div>
   )
 }

@@ -61,3 +61,4 @@ RoadPriority menggunakan **Laravel Sanctum Personal Access Tokens** (`Bearer <to
 1. **Hashing Password:** Semua password di-hash menggunakan `Hash::make()` (Bcrypt bawaan Laravel) saat pembuatan/pembaruan akun di `UserAccountService` maupun `LocalAdminSeeder`.
 2. **Penyembunyian Atribut Sensitif:** Model `User` mendeklarasikan `$hidden = ['password', 'remember_token']` dan seluruh respons profil melewati `UserResource`.
 3. **CORS Terbatas (`config/cors.php`):** Origin yang diizinkan dibatasi secara eksplisit melalui `CORS_ALLOWED_ORIGINS` (bawaan: `http://localhost:5173,http://127.0.0.1:5173`), bukan wildcard terbuka untuk kredensial.
+

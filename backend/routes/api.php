@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DecisionCriterionController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ReportAccessController;
+use App\Http\Controllers\Api\RoadSegmentController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| RoadPriority REST API Routes (PRD 01 - PRD 03)
+| RoadPriority REST API Routes (PRD 01 - PRD 04)
 |
 */
 
@@ -22,6 +23,15 @@ Route::get('/health', HealthController::class)->name('api.health');
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:login')
     ->name('api.auth.login');
+
+// Endpoint WebGIS & Pelaporan yang mendukung akses publik terbatas (hanya verified & non-demo)
+// maupun akses penuh berbasis token Sanctum (melalui pemeriksaan DamageReportPolicy di controller).
+Route::get('/road-segments', [RoadSegmentController::class, 'index'])->name('api.road-segments.index');
+Route::get('/road-segments/{segmentIdentifier}', [RoadSegmentController::class, 'show'])->name('api.road-segments.show');
+Route::get('/reports', [ReportAccessController::class, 'index'])->name('api.reports.index');
+Route::get('/reports/{reportIdentifier}', [ReportAccessController::class, 'show'])->name('api.reports.show');
+Route::get('/reports/{damageReport}/photos/{reportPhoto}', [ReportAccessController::class, 'showPhoto'])
+    ->name('api.reports.photos.show');
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     // Authentication & Identity
@@ -36,8 +46,10 @@ Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('api.audit-logs.index');
     });
 
-    // Damage Report Access & Status Workflow (enforced via DamageReportPolicy + ReportStatusService)
-    Route::get('/reports/{damageReport}', [ReportAccessController::class, 'show'])->name('api.reports.show');
+    // Damage Report Creation & Officer Verification Workflow (PRD 04)
+    Route::post('/reports', [ReportAccessController::class, 'store'])
+        ->middleware('role:reporter,officer,admin')
+        ->name('api.reports.store');
     Route::patch('/reports/{damageReport}/status', [ReportAccessController::class, 'updateStatus'])
         ->middleware('role:officer,admin')
         ->name('api.reports.update-status');

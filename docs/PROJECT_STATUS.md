@@ -1,68 +1,60 @@
 # PROJECT_STATUS — RoadPriority
 
-Diperbarui: 2026-10-29 19:55 WIB oleh sesi agen (Antigravity)
+Diperbarui: 2026-10-29 23:59 WIB oleh sesi agen (Antigravity)
 
 ## Tahap aktif
 
 - **PRD 01 (Foundation & Project Bootstrap + Audit Sumber Data):** **selesai dan disetujui**.
 - **PRD 02 (Database Design & API Contract):** **selesai dan terverifikasi** (`prd-02-database-and-api`).
-- **PRD 03 (Backend API, Authentication & Access Control):** **selesai diimplementasikan dan diverifikasi** pada cabang `prd-03-backend-auth-rbac` (menunggu persetujuan penutupan tahap dari pengguna).
-- **PRD 05 (Mesin Keputusan Inti AHP-TOPSIS — Pure Service Layer):** **selesai diimplementasikan dan teruji unit** (`80` unit test mesin keputusan lulus).
+- **PRD 03 (Backend API, Authentication & Access Control):** **selesai dan terverifikasi** (`prd-03-backend-auth-rbac`).
+- **PRD 04 (Road Damage Reporting & WebGIS):** **selesai diimplementasikan dan diverifikasi** pada cabang `prd-04-reporting-and-webgis` (menunggu persetujuan penutupan tahap dari pengguna).
+- **PRD 05 (Mesin Keputusan Inti AHP-TOPSIS — Pure Service Layer):** **pure service layer selesai diimplementasikan dan teruji unit** (`80` unit test mesin keputusan lulus; integrasi endpoint HTTP AHP-TOPSIS siap dikerjakan pada tahap PRD 05 berikutnya).
 
 ## Ringkasan kondisi
 
-1. **Autentikasi Sanctum & Keamanan Sesi (PRD 03):** `POST /api/login` (`throttle:login` 5 percobaan/menit per `email|ip`), `POST /api/logout`, dan `GET /api/me` diimplementasikan dengan Laravel Sanctum Personal Access Tokens bermasa berlaku terbatas (`SANCTUM_TOKEN_EXPIRATION_MINUTES=480`), pencabutan token otomatis saat logout maupun saat akun dinonaktifkan (`EnsureActiveUser`), serta konfigurasi CORS terbatas (`CORS_ALLOWED_ORIGINS`).
-2. **Kontrol Akses Berbasis Role & Kepemilikan (RBAC + Anti-IDOR):** 4 peran (`reporter`, `officer`, `expert`, `admin`) ditegakkan melalui middleware (`active.user`, `role`) dan Laravel Policies (`UserPolicy`, `DamageReportPolicy`, `DecisionCriterionPolicy`, `CriterionWeightVersionPolicy`). Pelapor tidak dapat melihat laporan belum terverifikasi milik pelapor lain (`403`) dan tidak dapat memverifikasi laporannya sendiri (`403`). Identitas pelapor (`reporter_id`) disensor untuk pengakses non-pemilik di luar `officer`/`admin`.
-3. **Service Layer, Transaksi Atomik & Proteksi Admin Terakhir:** `UserAccountService`, `ReportStatusService`, dan `AuditLogService` membungkus operasi multi-tabel di dalam `DB::transaction()`. `UserAccountService` menggunakan `lockForUpdate()` untuk mencegah penonaktifan atau penurunan role akun `admin` aktif terakhir (`409 Conflict`).
-4. **Penanganan Error Konsisten & Audit Log Tersanitasi:** `app/Exceptions/Handler.php` mengembalikan amplop JSON konsisten (`401`, `403`, `404`, `409`, `422`, `429`, `500`) tanpa pernah membocorkan stack trace, SQL query, atau path file internal. `AuditLogService` secara otomatis menghapus kunci rahasia (`password`, `token`, dll.) sebelum menyimpan ke `audit_logs`.
+1. **Modul Pelaporan Kerusakan Jalan & Foto Bukti Aman (PRD 04):**
+   - `POST /api/reports` menghasilkan kode unik server `RPT-YYYYMMDD-XXXXXX` (`DamageReportService`), mengabaikan spoofing `report_code`/`status`/`reporter_id`, mengizinkan laporan tersimpan tanpa `road_segment_id`, serta memvalidasi isi biner foto (`JPEG`, `PNG`, `WebP` maks 5 file @ 5 MB) menggunakan `getimagesize()`.
+   - Foto disimpan di disk privat `local` (`storage/app/report-photos/...` di luar `public/`), dilengkapi *orphan file cleanup* otomatis jika transaksi database gagal, dan hanya dapat diakses melalui endpoint terotorisasi `GET /api/reports/{damageReport}/photos/{reportPhoto}`.
+2. **Alur Verifikasi Petugas, Deteksi Kandidat Duplikat & Koreksi Berjejak Histori:**
+   - `ReportStatusService` mendukung transisi `submitted → under_review → verified | rejected | duplicate | needs_info` dan `verified → resolved | under_review` (koreksi berjejak histori tanpa menghapus riwayat sebelumnya).
+   - `GeoGeometryService` menghitung jarak titik-ke-garis (`LineString` GeoJSON `[lng, lat]`) dan jarak antar-titik dalam satuan meter untuk menyajikan `suggested_segments` ($\le 50\text{ m}$) dan `nearby_duplicate_candidates` ($\le 50\text{ m}$, $\pm 30\text{ hari}$) pada panel verifikasi petugas.
+3. **WebGIS Interaktif Leaflet + OpenStreetMap:**
+   - Frontend React + Vite + Leaflet (`WebGisMap.jsx`, `ReportForm.jsx`, `ReportDetailModal.jsx`, `HomePage.jsx`) menyediakan peta laporan publik, overlay geometri `road_segments`, *spatial grid clustering* pada zoom $< 15$, sinkronisasi daftar $\leftrightarrow$ peta, filter `status`/`damage_type`/periode/`q`/`bbox` (debounce 350 ms + `AbortController`), pemilihan lokasi dengan GPS perangkat atau klik/geser marker manual, antrean verifikasi petugas, dan modal detail laporan.
 
 ## Hasil build dan tes terakhir
 
 | Perintah | Hasil | Tanggal |
 |---|---|---|
-| `php artisan test` (pada `roadpriority_test`) | **`104 passed` (0 failed)** dalam `3.26s` (`AuthAndAccessControlTest` 16 tes, `DatabaseSchemaIntegrityTest` 8 tes, `HealthEndpointTest` 2 tes, `AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `ExampleTest`) | 2026-10-29 19:52 WIB |
-| `php artisan route:list --path=api` | 12 rute API terdaftar (`api/health`, `api/login`, `api/logout`, `api/me`, `api/users`, `api/audit-logs`, `api/reports/{damageReport}`, `api/reports/{damageReport}/status`, `api/criteria`) | 2026-10-29 19:51 WIB |
-| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` | 2026-10-29 19:24 WIB |
-| `npm run build` (`frontend/`) | `built in 151ms` | 2026-10-29 19:03 WIB |
+| `php artisan test` (pada `roadpriority_test`) | **`110 passed` (0 failed)** dalam `6.64s` (`DamageReportingAndWebGisTest` 6 tes, `AuthAndAccessControlTest` 16 tes, `DatabaseSchemaIntegrityTest` 8 tes, `HealthEndpointTest` 2 tes, `AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `ExampleTest`) | 2026-10-29 23:55 WIB |
+| `php artisan route:list --path=api` | 17 rute API terdaftar (`api/health`, `api/login`, `api/logout`, `api/me`, `api/reports`, `api/reports/{reportIdentifier}`, `api/reports/{damageReport}/status`, `api/reports/{damageReport}/photos/{reportPhoto}`, `api/road-segments`, `api/road-segments/{segmentIdentifier}`, `api/criteria`, `api/users`, `api/audit-logs`) | 2026-10-29 23:52 WIB |
+| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` (12 berkas) | 2026-10-29 23:58 WIB |
+| `npm run build` (`frontend/`) | `✓ built in 353ms` (`dist/assets/index-BJzjyRV0.js` 408.50 kB, `index-BK8-Xho-.css` 24.27 kB) | 2026-10-29 23:58 WIB |
 
-## Requirement dan acceptance criteria PRD 03
+## Requirement dan acceptance criteria PRD 04
 
-| Kriteria (PRD 03 §14) | Status | Bukti |
+| Kriteria (PRD 04 §15) | Status | Bukti |
 |---|---|---|
-| Login, logout, dan profil pengguna bekerja | **Terpenuhi** | `AuthController` + `AuthAndAccessControlTest` (`login`, `logout`, `me`) |
-| Password tersimpan sebagai hash dan tidak pernah muncul pada respons API | **Terpenuhi** | `Hash::make()`, `User::$hidden`, `UserResource`, `AuthAndAccessControlTest` |
-| Role dan permission berjalan di server | **Terpenuhi** | `EnsureUserHasRole`, `EnsureActiveUser`, `UserPolicy`, `DamageReportPolicy`, `DecisionCriterionPolicy`, `CriterionWeightVersionPolicy` |
-| Endpoint terproteksi menolak akses tanpa autentikasi atau tanpa hak akses | **Terpenuhi** | `AuthAndAccessControlTest::test_private_endpoints_reject_unauthenticated_requests_with_401` & `test_role_authorization_matrix_for_admin_user_and_criteria_endpoints` |
-| Kepemilikan resource diperiksa untuk mencegah IDOR | **Terpenuhi** | `DamageReportPolicy::view` + `AuthAndAccessControlTest::test_idor_prevention_and_reporter_privacy_on_damage_reports` |
-| Validasi request mengembalikan `422` dengan format error konsisten | **Terpenuhi** | Form Requests (`LoginRequest`, `StoreUserRequest`, `UpdateUserRequest`, `UpdateReportStatusRequest`, `StoreDecisionCriterionRequest`) + `Handler.php` |
-| Error handler tidak membocorkan informasi sensitif | **Terpenuhi** | `AuthAndAccessControlTest::test_api_exception_handler_never_leaks_stack_trace_or_sql_details_on_unexpected_errors` |
-| Service layer dan transaksi database digunakan untuk operasi multi-tabel | **Terpenuhi** | `UserAccountService`, `ReportStatusService`, `DecisionCriterionController::store` + uji rollback `test_multi_table_status_transition_rolls_back_completely_if_audit_step_throws` |
-| Audit log mencatat aksi sensitif tanpa menyimpan rahasia | **Terpenuhi** | `AuditLogService` + `test_login_fails_with_wrong_password_and_redacts_secret_in_audit_log` |
-| Pengujian autentikasi, otorisasi, dan validasi lulus pada database pengujian terpisah | **Terpenuhi** | `104 passed` pada database `roadpriority_test` |
-| Dokumentasi dan `PROJECT_STATUS.md` telah diperbarui | **Terpenuhi** | [`docs/AUTHENTICATION.md`](AUTHENTICATION.md), [`docs/ACCESS_CONTROL.md`](ACCESS_CONTROL.md), [`docs/API_CONTRACT.md`](API_CONTRACT.md), [`docs/DECISIONS.md`](DECISIONS.md), dan dokumen ini |
+| Pengguna dapat membuat laporan dengan koordinat yang valid | **Terpenuhi** | `StoreDamageReportRequest`, `DamageReportService`, `ReportForm.jsx`, `DamageReportingAndWebGisTest` |
+| Foto dapat disimpan dan ditampilkan sesuai izin akses | **Terpenuhi** | `ReportAccessController@showPhoto`, `DamageReportPolicy@viewPhoto`, `test_photo_and_report_visibility_enforced_across_guest_reporter_and_officer_with_correction_trail` |
+| Kode laporan unik dan histori status tercatat | **Terpenuhi** | `DamageReportService::generateUniqueReportCode`, `ReportStatusHistory`, `test_reporter_can_submit_report_without_segment_with_valid_photo_and_server_generates_unique_code` |
+| Petugas dapat memverifikasi laporan melalui alur yang sah | **Terpenuhi** | `ReportStatusService::transition`, `ReportDetailModal.jsx`, uji verifikasi & duplikat |
+| Pengunjung hanya melihat data yang memang boleh dipublikasikan | **Terpenuhi** | `ReportAccessController@index` & `@show`, [`docs/DATA_VISIBILITY.md`](DATA_VISIBILITY.md) |
+| WebGIS menampilkan laporan yang sesuai filter | **Terpenuhi** | `WebGisMap.jsx`, `HomePage.jsx`, `test_public_reports_and_road_segments_support_filters_bbox_pagination_and_exclude_demo_data` |
+| Daftar dan peta tersinkronisasi | **Terpenuhi** | `selectedReportId` & `onBoundsChange` di `HomePage.jsx` + `WebGisMap.jsx` |
+| Pagination atau pembatasan hasil mencegah pemuatan data tanpa batas | **Terpenuhi** | `per_page` maks `100` di `ListDamageReportsRequest` & `ListRoadSegmentsRequest` |
+| Otorisasi diuji pada backend | **Terpenuhi** | `AuthAndAccessControlTest` (16 tes) + `DamageReportingAndWebGisTest` (6 tes) |
+| Test utama lulus | **Terpenuhi** | `110 passed` pada `roadpriority_test`, `0 warnings / 0 errors` pada `npm run lint` |
+| Dokumentasi dan `PROJECT_STATUS.md` diperbarui | **Terpenuhi** | [`docs/REPORTING_MODULE.md`](REPORTING_MODULE.md), [`docs/WEBGIS.md`](WEBGIS.md), [`docs/DATA_VISIBILITY.md`](DATA_VISIBILITY.md), [`docs/API_CONTRACT.md`](API_CONTRACT.md), dan dokumen ini |
+| Tidak ada data demonstrasi yang tercampur tanpa penandaan dengan data penelitian | **Terpenuhi** | `where('is_demo', false)` diterapkan secara ketat pada seluruh query publik `reports` dan `road_segments` |
 
-## Perubahan backend dan endpoint terakhir (PRD 03)
-
-- **Middleware (`backend/app/Http/Middleware/`):** `EnsureActiveUser.php` (`active.user`), `EnsureUserHasRole.php` (`role`).
-- **Policies (`backend/app/Policies/`):** `UserPolicy.php`, `DamageReportPolicy.php`, `DecisionCriterionPolicy.php`, `CriterionWeightVersionPolicy.php`.
-- **Form Requests (`backend/app/Http/Requests/`):** `Auth/LoginRequest.php`, `User/StoreUserRequest.php`, `User/UpdateUserRequest.php`, `Report/UpdateReportStatusRequest.php`, `Criterion/StoreDecisionCriterionRequest.php`.
-- **Services (`backend/app/Services/`):** `AuditLogService.php`, `UserAccountService.php`, `ReportStatusService.php`.
-- **Controllers & Resources (`backend/app/Http/`):** `Controllers/Api/AuthController.php`, `Controllers/Api/UserController.php`, `Controllers/Api/AuditLogController.php`, `Controllers/Api/ReportAccessController.php`, `Controllers/Api/DecisionCriterionController.php`, `Resources/UserResource.php`.
-- **Seeder Admin Lokal (`backend/database/seeders/`):** `LocalAdminSeeder.php`.
-- **Feature Tests (`backend/tests/Feature/`):** `AuthAndAccessControlTest.php` (16 skenario keamanan & fungsionalitas).
-
-## Issue terbuka
+## Issue terbuka & Batasan Data
 
 | ID | Keparahan | Deskripsi | Langkah reproduksi / Mitigasi |
 |---|---|---|---|
 | ISS-01 | Sedang | PHP 8.0.30 & Laravel 9.52.22 memiliki 19 advisory keamanan pada `composer audit` (`DEC-002`) | Aman untuk pengembangan lokal; wajib upgrade PHP $\ge 8.2$ sebelum deployment publik |
-| ISS-02 | Rendah | `ST_Distance_Sphere(POINT, LINESTRING)` menghasilkan `ERROR 1815` pada MariaDB 10.4.32 (`DEC-008`, `DEC-010`) | Telah dimitigasi dengan penyimpanan `geometry_geojson` + indeks centroid `DECIMAL(10,7)` dan perhitungan jarak titik-ke-garis di PHP pada PRD 04 |
-
-## Keputusan menunggu persetujuan
-
-- Konfirmasi nilai spesifik untuk **D-02** (daftar kecamatan/kelurahan wilayah studi BSD) dan **D-06** (pilihan perlakuan kriteria K4). Lihat [`docs/DECISIONS.md`](DECISIONS.md) §2.
+| ISS-02 | Rendah | Poligon batas administratif resmi BIG (`boundary_geojson`) dan ekstrak penuh jalan OSM BSD belum dimuat ke database produksi (`GAP-02`, `GAP-03`) | Sistem saat ini menggunakan kotak pembatas referensi BSD/Tangerang (`config/reporting.php`) dengan penanda peringatan eksplisit dan mengizinkan laporan tanpa `road_segment_id` hingga dataset poligon/ruas jalan resmi diimpor |
 
 ## Langkah berikutnya yang disarankan
 
-1. Setujui penutupan **PRD 03**.
-2. Lanjutkan ke **PRD 04 — Pelaporan Kerusakan, Verifikasi, dan Penilaian Kondisi Lapangan** (pengiriman laporan masyarakat beserta validasi foto, pencocokan segmen jalan terdekat dalam meter, alur antrean verifikasi petugas, deteksi kandidat laporan duplikat, dan pencatatan penilaian kondisi lapangan `damage_assessments`).
+1. Setujui penutupan **PRD 04**.
+2. Lanjutkan ke penyelesaian **PRD 05 — Integrasi Endpoint HTTP & Antarmuka Mesin Keputusan AHP-TOPSIS** (menghubungkan model Eloquent `DecisionCriterion`, `CriterionWeightVersion`, `DamageAssessment`, dan `DecisionRun` ke service layer `AhpService`, `TopsisService`, `SensitivityService`, dan `SnapshotService` yang sudah teruji unit).
