@@ -174,6 +174,17 @@ export default function HomePage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasReportDraft])
 
+  // Tangani otomatis event unauthorized (401) dari backend jika sesi berakhir atau database sempat terputus
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setCurrentUser(null)
+      setShowLoginPanel(true)
+      setLoginError('Sesi login Anda telah berakhir atau koneksi database sempat terputus. Silakan masuk kembali.')
+    }
+    window.addEventListener('rp:auth_unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('rp:auth_unauthorized', handleUnauthorized)
+  }, [])
+
   // Debounce input pencarian kode laporan (~300ms) untuk mencegah request berlebihan (PRD 06.3 §3)
   useEffect(() => {
     const timer = setTimeout(() => {

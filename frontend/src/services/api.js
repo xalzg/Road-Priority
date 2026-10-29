@@ -94,6 +94,9 @@ export async function apiRequest(
     if (!response.ok) {
       if (response.status === 401) {
         clearStoredSession()
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('rp:auth_unauthorized'))
+        }
       }
       const err = new Error(
         payload?.message || `Permintaan gagal dengan status HTTP ${response.status}.`
