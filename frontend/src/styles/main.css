@@ -68,3 +68,4 @@ button {
 }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 button:focus-visible { outline: 3px solid #93b4ff; outline-offset: 2px; }
+

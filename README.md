@@ -58,3 +58,4 @@ cd frontend ; npm run lint ; npm run build
 - [docs/SETUP_WINDOWS.md](docs/SETUP_WINDOWS.md): setup Windows + XAMPP
 - [docs/API_CONTRACT.md](docs/API_CONTRACT.md): kontrak API
 - [docs/DECISIONS.md](docs/DECISIONS.md): keputusan teknis
+

@@ -4,3 +4,4 @@ import { apiGet } from './api'
 export function getHealth(options) {
   return apiGet('/api/health', options)
 }
+

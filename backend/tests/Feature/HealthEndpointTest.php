@@ -26,3 +26,4 @@ class HealthEndpointTest extends TestCase
         $this->assertStringNotContainsString(PHP_VERSION, $body);
     }
 }
+
