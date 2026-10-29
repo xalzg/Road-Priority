@@ -14,10 +14,18 @@ import {
   updateCriterion,
 } from '../services/decisionService'
 
-export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) {
-  const [subTab, setSubTab] = useState('criteria_readiness')
+export default function DecisionEnginePanel({
+  currentUser,
+  roadSegments = [],
+  subTab: propSubTab,
+  onSubTabChange,
+}) {
+  const [internalSubTab, setInternalSubTab] = useState('criteria_readiness')
+  const subTab = propSubTab || internalSubTab
+  const setSubTab = onSubTabChange || setInternalSubTab
   const [includeDemo, setIncludeDemo] = useState(false)
   const [refreshCounter, setRefreshCounter] = useState(0)
+  const [confirmActivateVersion, setConfirmActivateVersion] = useState(null)
 
   // Data utama dari backend
   const [criteria, setCriteria] = useState([])
@@ -240,7 +248,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
     }
   }
 
-  const handleActivateVersion = async (versionId) => {
+  const executeActivateVersion = async (versionId) => {
     setAhpBusy(true)
     setActionBanner(null)
     try {
@@ -312,7 +320,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
     weightVersions.find((v) => String(v.id) === String(selectedVersionId)) || null
 
   return (
-    <section className="panel-card" aria-label="Mesin Pendukung Keputusan Prioritas Jalan AHP-TOPSIS">
+    <section className="panel-card decision-engine-panel" aria-label="Mesin Pendukung Keputusan Prioritas Jalan AHP-TOPSIS">
       <div className="section-title-row">
         <div>
           <h2>Mesin Pendukung Keputusan Prioritas Jalan (AHP-TOPSIS)</h2>
@@ -341,7 +349,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
       </div>
 
       {/* Sub-navigasi modul AHP-TOPSIS */}
-      <div className="nav-tabs" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>
+      <div className="nav-tabs decision-subtabs" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>
         <button
           type="button"
           className={`tab-btn ${subTab === 'criteria_readiness' ? 'active' : ''}`}
@@ -398,8 +406,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
             <strong>immutable</strong> pada atribut semantik (kode, tipe benefit/cost, skala) agar riwayat
             keputusan tetap dapat direproduksi.
           </p>
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-scroll-container">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Kode</th>
@@ -483,8 +491,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 {readiness.missing_data_policy?.description}
               </p>
 
-              <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Kode Ruas</th>
@@ -688,8 +696,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
             </form>
           )}
 
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-scroll-container">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -764,7 +772,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                             type="button"
                             className="btn-xs"
                             disabled={ahpBusy}
-                            onClick={() => handleActivateVersion(ver.id)}
+                            onClick={() => setConfirmActivateVersion(ver)}
                           >
                             Setujui &amp; Aktifkan
                           </button>
@@ -792,7 +800,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
               )}
 
               {selectedVersion.weight_items?.length > 0 ? (
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="table-scroll-container">
+                  <table className="data-table">
                   <thead>
                     <tr>
                       <th>Kode</th>
@@ -818,7 +827,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                     ))}
                   </tbody>
                 </table>
-              ) : (
+              </div>
+            ) : (
                 <p className="text-muted">
                   Versi ini masih berstatus draft dan belum memiliki hasil perhitungan bobot.
                 </p>
@@ -839,8 +849,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 otomatis oleh server.
               </p>
               <form onSubmit={handleCalculateAhp}>
-                <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
-                  <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="table-scroll-container">
+                  <table className="data-table">
                     <thead>
                       <tr>
                         <th>Kriteria A (Baris i)</th>
@@ -952,8 +962,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
           </form>
 
           <h3>3.2 Riwayat Eksekusi Keputusan (Decision Runs)</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-scroll-container">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Kode Run</th>
@@ -1081,8 +1091,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 <sup>+</sup>, D<sub>i</sub>
                 <sup>-</sup>, C<sub>i</sub>)
               </h3>
-              <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Peringkat</th>
@@ -1138,7 +1148,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 <>
                   <h3>4.2 Ruas Jalan yang Dikeluarkan dari Perhitungan (Beserta Alasan)</h3>
                   <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table className="data-table">
                       <thead>
                         <tr>
                           <th>Kode Ruas</th>
@@ -1168,8 +1178,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 4.3 Rincian Tahapan Matriks TOPSIS (X &rarr; R &rarr; V) &amp; Solusi Ideal (A
                 <sup>+</sup>, A<sup>-</sup>)
               </h3>
-              <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Kode Kriteria</th>
@@ -1209,8 +1219,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 </table>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll-container">
+                <table className="data-table">
                   <thead>
                     <tr>
                       <th>Ruas</th>
@@ -1248,6 +1258,86 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
               </div>
             </div>
           )}
+        </div>
+      )}
+      {/* Modal Konfirmasi Aktivasi Versi Bobot AHP (PRD 06.2 §3.F) */}
+      {confirmActivateVersion && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-activate-title"
+        >
+          <div className="modal-card confirm-modal-box" style={{ maxWidth: '540px' }}>
+            <div className="modal-header">
+              <h3 id="confirm-activate-title">Konfirmasi Persetujuan &amp; Aktivasi Bobot AHP</h3>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={ahpBusy}
+                onClick={() => setConfirmActivateVersion(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '0.4rem 0' }}>
+              <p>
+                Anda akan menyetujui dan mengaktifkan{' '}
+                <strong>
+                  Versi #{confirmActivateVersion.id}: {confirmActivateVersion.version_name}
+                </strong>{' '}
+                secara permanen.
+              </p>
+              <div className="helper-box">
+                <ul>
+                  <li>
+                    Status versi bobot akan diubah menjadi <strong>APPROVED</strong>.
+                  </li>
+                  <li>
+                    Versi ini akan menjadi acuan utama pada perhitungan prioritas penanganan jalan
+                    (TOPSIS) resmi.
+                  </li>
+                  <li>
+                    Rasio Konsistensi: <strong>CR = {Number(confirmActivateVersion.consistency_ratio).toFixed(4)}</strong> (&le; 0,10 / Konsisten).
+                  </li>
+                  <li>
+                    Tindakan ini dicatat dalam Audit Log sistem beserta identitas Anda ({currentUser?.name || 'Administrator'}).
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                marginTop: '1rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid var(--color-border)',
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={ahpBusy}
+                onClick={() => setConfirmActivateVersion(null)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={ahpBusy}
+                onClick={async () => {
+                  const targetId = confirmActivateVersion.id
+                  setConfirmActivateVersion(null)
+                  await executeActivateVersion(targetId)
+                }}
+              >
+                {ahpBusy ? 'Memproses Aktivasi…' : 'Ya, Setujui & Aktifkan Bobot'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>

@@ -5,6 +5,7 @@ import ReportForm from '../components/ReportForm'
 import WebGisMap from '../components/WebGisMap'
 import { clearStoredSession, getStoredToken, getStoredUser } from '../services/api'
 import {
+  BSD_STUDY_AREA_BBOX,
   DAMAGE_TYPE_LABELS,
   DAMAGE_TYPE_OPTIONS,
   STATUS_LABELS,
@@ -15,9 +16,55 @@ import {
   logoutUser,
 } from '../services/reportingService'
 
+const VALID_TABS = ['public_map', 'create_report', 'my_reports', 'officer_queue', 'decision_engine']
+const VALID_SUBTABS = ['criteria_readiness', 'ahp_weights', 'topsis_runs', 'run_verification']
+
+function getUrlParams() {
+  if (typeof window === 'undefined') return { tab: null, subtab: null, report: null }
+  const p = new URLSearchParams(window.location.search)
+  return {
+    tab: p.get('tab'),
+    subtab: p.get('subtab'),
+    report: p.get('report'),
+  }
+}
+
+function isTabPermitted(tab, user) {
+  if (!tab || tab === 'public_map') return true
+  if (tab === 'create_report' || tab === 'my_reports') return Boolean(user)
+  if (tab === 'officer_queue') return user && (user.role === 'officer' || user.role === 'admin')
+  if (tab === 'decision_engine') return user && ['officer', 'expert', 'admin'].includes(user.role)
+  return false
+}
+
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState(() => getStoredUser())
-  const [activeTab, setActiveTab] = useState('public_map')
+
+  // Inisialisasi state dari URL query string (PRD 06.2 §3.C)
+  const initialParams = getUrlParams()
+  const initialTab =
+    initialParams.tab &&
+    VALID_TABS.includes(initialParams.tab) &&
+    isTabPermitted(initialParams.tab, getStoredUser())
+      ? initialParams.tab
+      : 'public_map'
+  const initialSubTab =
+    initialParams.subtab && VALID_SUBTABS.includes(initialParams.subtab)
+      ? initialParams.subtab
+      : 'criteria_readiness'
+
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [decisionSubTab, setDecisionSubTab] = useState(initialSubTab)
+
+  // State draft form pelaporan di memori sesi (PRD 06.2 §3.E - mencegah draft hilang saat berpindah tab)
+  const [reportDraft, setReportDraft] = useState({
+    damageType: 'lubang',
+    description: '',
+    latitude: String(BSD_STUDY_AREA_BBOX.centerLat),
+    longitude: String(BSD_STUDY_AREA_BBOX.centerLng),
+    gpsAccuracy: '',
+    files: [],
+  })
 
   // State form login
   const [showLoginPanel, setShowLoginPanel] = useState(false)
@@ -48,12 +95,82 @@ export default function HomePage() {
 
   // State pilihan laporan (sinkronisasi daftar <-> peta <-> modal detail)
   const [selectedReportId, setSelectedReportId] = useState(null)
-  const [detailModalTarget, setDetailModalTarget] = useState('')
+  const [detailModalTarget, setDetailModalTarget] = useState(() => initialParams.report || '')
 
   const isOfficerOrAdmin =
     currentUser && (currentUser.role === 'officer' || currentUser.role === 'admin')
   const canAccessDecisionEngine =
     currentUser && ['officer', 'expert', 'admin'].includes(currentUser.role)
+  const hasReportDraft = Boolean(reportDraft.description?.trim() || reportDraft.files?.length > 0)
+
+  // Sinkronisasi navigasi ke URL query string & History API (PRD 06.2 §3.C)
+  const syncUrl = (tab, subTab, reportCode, replace = false) => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+
+    if (tab && tab !== 'public_map') {
+      params.set('tab', tab)
+    } else {
+      params.delete('tab')
+    }
+
+    if (tab === 'decision_engine' && subTab && subTab !== 'criteria_readiness') {
+      params.set('subtab', subTab)
+    } else {
+      params.delete('subtab')
+    }
+
+    if (reportCode) {
+      params.set('report', reportCode)
+    } else {
+      params.delete('report')
+    }
+
+    const query = params.toString()
+    const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname
+    const currentSearch = window.location.search
+
+    if (currentSearch !== (query ? `?${query}` : '')) {
+      if (replace) {
+        window.history.replaceState({ tab, subTab, report: reportCode }, '', newUrl)
+      } else {
+        window.history.pushState({ tab, subTab, report: reportCode }, '', newUrl)
+      }
+    }
+  }
+
+  // Listener History API (Back / Forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const { tab: urlTab, subtab: urlSubTab, report: urlReport } = getUrlParams()
+      const resolvedTab =
+        urlTab && VALID_TABS.includes(urlTab) && isTabPermitted(urlTab, currentUser)
+          ? urlTab
+          : 'public_map'
+      const resolvedSubTab =
+        urlSubTab && VALID_SUBTABS.includes(urlSubTab) ? urlSubTab : 'criteria_readiness'
+
+      setActiveTab(resolvedTab)
+      setDecisionSubTab(resolvedSubTab)
+      setDetailModalTarget(urlReport || '')
+      if (!urlReport) setSelectedReportId(null)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [currentUser])
+
+  // Peringatan sebelum menutup browser/tab jika ada draft yang belum disimpan (PRD 06.2 §3.E)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasReportDraft) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasReportDraft])
 
   const currentQueryKey = [
     activeTab,
@@ -86,6 +203,13 @@ export default function HomePage() {
       .catch(() => {
         clearStoredSession()
         setCurrentUser(null)
+        setActiveTab((prev) => {
+          if (!isTabPermitted(prev, null)) {
+            syncUrl('public_map', 'criteria_readiness', null, true)
+            return 'public_map'
+          }
+          return prev
+        })
       })
     return () => controller.abort()
   }, [])
@@ -176,6 +300,25 @@ export default function HomePage() {
     } else {
       setStatusFilter('')
     }
+    syncUrl(tab, decisionSubTab, detailModalTarget)
+  }
+
+  const handleDecisionSubTabChange = (newSubTab) => {
+    setDecisionSubTab(newSubTab)
+    syncUrl(activeTab, newSubTab, detailModalTarget)
+  }
+
+  const openReportDetail = (reportCodeOrId, reportId = null) => {
+    if (reportId !== null) {
+      setSelectedReportId(reportId)
+    }
+    setDetailModalTarget(reportCodeOrId)
+    syncUrl(activeTab, decisionSubTab, reportCodeOrId)
+  }
+
+  const closeReportDetail = () => {
+    setDetailModalTarget('')
+    syncUrl(activeTab, decisionSubTab, null)
   }
 
   const handleLogin = async (evt) => {
@@ -198,14 +341,16 @@ export default function HomePage() {
   const handleLogout = async () => {
     await logoutUser()
     setCurrentUser(null)
-    if (
-      activeTab === 'create_report' ||
-      activeTab === 'my_reports' ||
-      activeTab === 'officer_queue' ||
-      activeTab === 'decision_engine'
-    ) {
-      setActiveTab('public_map')
-    }
+    setReportDraft({
+      damageType: 'lubang',
+      description: '',
+      latitude: String(BSD_STUDY_AREA_BBOX.centerLat),
+      longitude: String(BSD_STUDY_AREA_BBOX.centerLng),
+      gpsAccuracy: '',
+      files: [],
+    })
+    setActiveTab('public_map')
+    syncUrl('public_map', 'criteria_readiness', null, true)
     setRefreshTick((n) => n + 1)
   }
 
@@ -240,6 +385,7 @@ export default function HomePage() {
                 onClick={() => switchTab('create_report')}
               >
                 + Buat Laporan
+                {hasReportDraft && <span className="draft-dot" title="Terdapat draf laporan tersimpan" />}
               </button>
               <button
                 type="button"
@@ -339,10 +485,20 @@ export default function HomePage() {
       {activeTab === 'create_report' && currentUser && (
         <ReportForm
           roadSegments={roadSegments}
+          draft={reportDraft}
+          onDraftChange={setReportDraft}
           onCreated={(created) => {
+            setReportDraft({
+              damageType: 'lubang',
+              description: '',
+              latitude: String(BSD_STUDY_AREA_BBOX.centerLat),
+              longitude: String(BSD_STUDY_AREA_BBOX.centerLng),
+              gpsAccuracy: '',
+              files: [],
+            })
             setRefreshTick((n) => n + 1)
             if (created?.report_code) {
-              setDetailModalTarget(created.report_code)
+              openReportDetail(created.report_code, created.id)
             }
           }}
         />
@@ -350,7 +506,12 @@ export default function HomePage() {
 
       {/* Tab Mesin Pendukung Keputusan AHP-TOPSIS (PRD 05) */}
       {activeTab === 'decision_engine' && canAccessDecisionEngine && (
-        <DecisionEnginePanel currentUser={currentUser} roadSegments={roadSegments} />
+        <DecisionEnginePanel
+          currentUser={currentUser}
+          roadSegments={roadSegments}
+          subTab={decisionSubTab}
+          onSubTabChange={handleDecisionSubTabChange}
+        />
       )}
 
       {/* Tab Peta Publik / Laporan Saya / Antrean Petugas */}
@@ -492,8 +653,7 @@ export default function HomePage() {
                 roadSegments={showSegmentsOnMap ? roadSegments : []}
                 selectedReportId={selectedReportId}
                 onSelectReport={(r) => {
-                  setSelectedReportId(r.id)
-                  setDetailModalTarget(r.report_code || String(r.id))
+                  openReportDetail(r.report_code || String(r.id), r.id)
                 }}
                 onBoundsChange={(bboxStr) => {
                   setMapBbox(bboxStr)
@@ -582,8 +742,7 @@ export default function HomePage() {
                               type="button"
                               className="btn-xs"
                               onClick={() => {
-                                setSelectedReportId(item.id)
-                                setDetailModalTarget(item.report_code || String(item.id))
+                                openReportDetail(item.report_code || String(item.id), item.id)
                               }}
                             >
                               {isOfficerOrAdmin ? 'Detail / Verifikasi' : 'Detail'}
@@ -633,7 +792,7 @@ export default function HomePage() {
           reportIdOrCode={detailModalTarget}
           currentUser={currentUser}
           roadSegments={roadSegments}
-          onClose={() => setDetailModalTarget('')}
+          onClose={closeReportDetail}
           onStatusUpdated={() => setRefreshTick((n) => n + 1)}
         />
       )}

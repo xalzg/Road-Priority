@@ -16,9 +16,10 @@ export default function MainLayout({ children }) {
         </div>
       </header>
       <main className="layout-main">{children}</main>
-      <footer className="layout-footer">
-        Prototipe penelitian skripsi Sistem Informasi — Modul Pelaporan &amp; WebGIS (PRD 04). Basemap
-        &copy; OpenStreetMap contributors (ODbL).
+      <footer className="layout-footer site-footer">
+        Prototipe penelitian skripsi Sistem Informasi — RoadPriority: Sistem Informasi Pelaporan
+        Kerusakan Jalan &amp; Penentuan Prioritas Perbaikan (AHP-TOPSIS). Basemap &copy; OpenStreetMap
+        contributors (ODbL).
       </footer>
     </div>
   )

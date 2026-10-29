@@ -1,61 +1,12 @@
 import { useEffect, useState } from 'react'
+import AuthorizedPhotoThumb from './AuthorizedPhotoThumb'
 import {
   ALLOWED_STATUS_TRANSITIONS,
   DAMAGE_TYPE_LABELS,
   STATUS_LABELS,
-  fetchAuthorizedPhotoObjectUrl,
   fetchReportDetail,
   updateDamageReportStatus,
 } from '../services/reportingService'
-
-function AuthorizedPhotoThumb({ photo }) {
-  const [src, setSrc] = useState('')
-  const [err, setErr] = useState('')
-
-  useEffect(() => {
-    let active = true
-    let objectUrl = ''
-    const controller = new AbortController()
-
-    fetchAuthorizedPhotoObjectUrl(photo.url, { signal: controller.signal })
-      .then((url) => {
-        if (!active) {
-          URL.revokeObjectURL(url)
-          return
-        }
-        objectUrl = url
-        setSrc(url)
-      })
-      .catch((e) => {
-        if (e.name === 'AbortError' || !active) return
-        setErr(e.message || 'Foto tidak dapat dimuat.')
-      })
-
-    return () => {
-      active = false
-      controller.abort()
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-  }, [photo.url])
-
-  if (err) {
-    return <div className="photo-error-box">{err}</div>
-  }
-  if (!src) {
-    return <div className="photo-loading-box">Memuat foto…</div>
-  }
-  return (
-    <a href={src} target="_blank" rel="noreferrer" className="photo-thumb-link">
-      <img
-        src={src}
-        alt={`Foto bukti laporan #${photo.id}`}
-        className="photo-thumb-img"
-      />
-    </a>
-  )
-}
 
 export default function ReportDetailModal({
   reportIdOrCode,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   BSD_STUDY_AREA_BBOX,
   DAMAGE_TYPE_OPTIONS,
@@ -11,20 +11,64 @@ const MAX_PHOTOS = 5
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp']
 
-export default function ReportForm({ roadSegments = [], onCreated }) {
-  const [damageType, setDamageType] = useState('lubang')
-  const [description, setDescription] = useState('')
-  const [latitude, setLatitude] = useState(String(BSD_STUDY_AREA_BBOX.centerLat))
-  const [longitude, setLongitude] = useState(String(BSD_STUDY_AREA_BBOX.centerLng))
-  const [gpsAccuracy, setGpsAccuracy] = useState('')
+export default function ReportForm({
+  roadSegments = [],
+  onCreated,
+  draft,
+  onDraftChange,
+}) {
+  const [damageType, setDamageType] = useState(() => draft?.damageType || 'lubang')
+  const [description, setDescription] = useState(() => draft?.description || '')
+  const [latitude, setLatitude] = useState(
+    () => draft?.latitude || String(BSD_STUDY_AREA_BBOX.centerLat)
+  )
+  const [longitude, setLongitude] = useState(
+    () => draft?.longitude || String(BSD_STUDY_AREA_BBOX.centerLng)
+  )
+  const [gpsAccuracy, setGpsAccuracy] = useState(() => draft?.gpsAccuracy || '')
   const [gpsStatus, setGpsStatus] = useState({ type: '', text: '' })
-  const [files, setFiles] = useState([])
+  const [files, setFiles] = useState(() => draft?.files || [])
   const [fileError, setFileError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitStage, setSubmitStage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [createdReport, setCreatedReport] = useState(null)
+
+  // Sinkronisasi draft ke parent component untuk mencegah data hilang saat tab berganti (PRD 06.2 §3.E)
+  useEffect(() => {
+    if (onDraftChange) {
+      onDraftChange({
+        damageType,
+        description,
+        latitude,
+        longitude,
+        gpsAccuracy,
+        files,
+      })
+    }
+  }, [damageType, description, latitude, longitude, gpsAccuracy, files, onDraftChange])
+
+  const handleResetDraft = () => {
+    if (!description.trim() && files.length === 0) return
+    if (window.confirm('Hapus seluruh isi draft formulir laporan ini?')) {
+      setDescription('')
+      setDamageType('lubang')
+      setFiles([])
+      setFieldErrors({})
+      setErrorMessage('')
+      if (onDraftChange) {
+        onDraftChange({
+          damageType: 'lubang',
+          description: '',
+          latitude: String(BSD_STUDY_AREA_BBOX.centerLat),
+          longitude: String(BSD_STUDY_AREA_BBOX.centerLng),
+          gpsAccuracy: '',
+          files: [],
+        })
+      }
+    }
+  }
 
   const numLat = Number(latitude)
   const numLng = Number(longitude)
@@ -174,7 +218,23 @@ export default function ReportForm({ roadSegments = [], onCreated }) {
 
   return (
     <section className="panel-card">
-      <h2>Buat Laporan Kerusakan Jalan</h2>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Buat Laporan Kerusakan Jalan</h2>
+        {Boolean(description.trim() || files.length > 0) && (
+          <span className="pill pill-under_review draft-indicator" style={{ fontSize: '0.8rem' }}>
+            ● Draft Tersimpan di Sesi
+          </span>
+        )}
+      </div>
       <p className="text-muted">
         Laporan yang dikirim akan masuk ke status <strong>Menunggu Tinjauan (Submitted)</strong> dan
         diperiksa oleh petugas sebelum dipublikasikan ke peta umum.
@@ -372,10 +432,23 @@ export default function ReportForm({ roadSegments = [], onCreated }) {
           </div>
         )}
 
-        <div className="form-actions">
+        <div
+          className="form-actions"
+          style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}
+        >
           <button type="submit" disabled={submitting}>
             {submitting ? 'Mengirim Laporan…' : 'Kirim Laporan Kerusakan'}
           </button>
+          {Boolean(description.trim() || files.length > 0) && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm btn-clear-draft"
+              disabled={submitting}
+              onClick={handleResetDraft}
+            >
+              Kosongkan Draft
+            </button>
+          )}
         </div>
       </form>
     </section>

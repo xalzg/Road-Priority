@@ -1,6 +1,6 @@
 # PROJECT_STATUS — RoadPriority
 
-Diperbarui: 2026-10-30 02:20 WIB oleh sesi agen (Antigravity — Penyelesaian PRD 06.1 UI/UX Audit & Frontend Performance Assessment)
+Diperbarui: 2026-10-30 03:00 WIB oleh sesi agen (Antigravity — Penyelesaian PRD 06.2 UI Foundation, Navigation & Responsive Refinement)
 
 ## Tahap aktif & Status Modul
 
@@ -13,7 +13,34 @@ Diperbarui: 2026-10-30 02:20 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 - **PRD 05.2 (GeoJSON Road Segment Importer):** **PASS / Selesai dan Terverifikasi** ([`docs/PRD_05_2_GEOJSON_IMPORTER_REPORT.md`](PRD_05_2_GEOJSON_IMPORTER_REPORT.md)).
 - **PRD 05.3 (Research Data Acquisition & Validation):** **PASS / Selesai dan Terverifikasi** ([`docs/PRD_05_3_RESEARCH_DATA_ACQUISITION_REPORT.md`](PRD_05_3_RESEARCH_DATA_ACQUISITION_REPORT.md)).
 - **PRD 05.4 (Manual End-to-End Verification):** **PASS / Selesai dan Terverifikasi di Browser** ([`docs/PRD_05_4_MANUAL_E2E_VERIFICATION_REPORT.md`](PRD_05_4_MANUAL_E2E_VERIFICATION_REPORT.md)).
-- **PRD 06.1 (UI/UX Audit & Frontend Performance Assessment):** **SELESAI / Audit Murni Observasi** ([`docs/PRD_06_1_UI_UX_AUDIT_REPORT.md`](PRD_06_1_UI_UX_AUDIT_REPORT.md)). **0 file `frontend/` atau `backend/` diubah.** 12 temuan terdokumentasi (5×P1, 6×P2, 1×P3).
+- **PRD 06.1 (UI/UX Audit & Frontend Performance Assessment):** **SELESAI / Audit Murni Observasi** ([`docs/PRD_06_1_UI_UX_AUDIT_REPORT.md`](PRD_06_1_UI_UX_AUDIT_REPORT.md)). 12 temuan terdokumentasi (5×P1, 6×P2, 1×P3).
+- **PRD 06.2 (UI Foundation, Navigation & Responsive Refinement):** **PASS / Selesai dan Terverifikasi Penuh** ([`docs/PRD_06_2_UI_FOUNDATION_REPORT.md`](PRD_06_2_UI_FOUNDATION_REPORT.md)). Standarisasi tabel SPK `.data-table`, sinkronisasi navigasi URL & History API, responsivitas multi-viewport tanpa overflow (`hasOverflow: false`), perlindungan draft form di sesi (`.draft-dot`), modal konfirmasi aktivasi AHP, ekstraksi `AuthorizedPhotoThumb`, dan pembersihan dead code.
+
+## Ringkasan Implementasi PRD 06.2 (UI Foundation, Navigation & Responsive Refinement)
+
+1. **Standarisasi Tabel Ilmiah SPK ([`DecisionEnginePanel.jsx`](../frontend/src/components/DecisionEnginePanel.jsx)):**
+   - Seluruh tabel kriteria, kesiapan data, perbandingan AHP, dan peringkat TOPSIS distandarisasi menggunakan class `.data-table` dan dibungkus di dalam `<div className="table-scroll-container">`.
+   - Padding sel seragam $\ge 8\text{ px}$ (`11.2px 13.6px`), ukuran font $12\text{--}13.5\text{ px}$, perataan angka metrik/skor ke kanan, dan mekanisme horizontal scroll mandiri (`overflow-x: auto`) yang mencegah distorsi layout pada layar kecil.
+2. **Alert Semantik & Kontras Warna Aksesibel ([`main.css`](../frontend/src/styles/main.css)):**
+   - Penyelarasan warna latar, border, dan teks alert semantik (`.alert-success`, `.alert-error`, `.alert-warning`, `.alert-info`, `.alert-ok`, `.alert-wait`) dengan rasio kontras WCAG AA $\ge 4{,}5:1$.
+   - Standarisasi indikator badge status (`.badge-green`, `.badge-amber`, `.badge-red`, `.badge-gray`).
+3. **Sinkronisasi Navigasi URL & History API ([`HomePage.jsx`](../frontend/src/pages/HomePage.jsx)):**
+   - Integrasi parameter query URL dua arah: `tab` (`public_map`, `create_report`, `my_reports`, `officer_queue`, `decision_engine`), `subtab` (`criteria_readiness`, `ahp_weights`, `topsis_runs`, `run_verification`), dan `report` (kode laporan modal detail).
+   - Penanganan browser *Back/Forward* melalui event listener `popstate` dan pembaruan riwayat via `pushState`/`replaceState` tanpa merusak state aplikasi.
+   - Fallback aman bagi pengguna tanpa hak akses (*safe role fallback*) yang langsung mengarahkan tamu (*guest*) ke `public_map` jika membuka URL terlindungi.
+4. **Responsivitas Multi-Viewport & Target Sentuh ([`main.css`](../frontend/src/styles/main.css)):**
+   - Eliminasi horizontal overflow pada viewport mobile (`375×812`), tablet (`768×1024`), dan desktop (`1366×768`) dibuktikan dengan `hasOverflow: false` via pengujian CDP.
+   - Ketinggian tombol navigasi dan aksi dioptimalkan untuk sentuhan mobile (`.tab-btn` min-height 38px, `.btn-sm` min-height 36px, `.btn-xs` min-height 36px).
+5. **Perlindungan Draft Form Pelaporan di Memori Sesi ([`ReportForm.jsx`](../frontend/src/components/ReportForm.jsx)):**
+   - State formulir laporan (`reportDraft`) disimpan pada `HomePage.jsx` sehingga isian deskripsi dan koordinat tidak hilang saat pengguna berpindah tab.
+   - Titik indikator amber (`.draft-dot`) muncul pada tombol tab `+ Buat Laporan` dan banner `● Draft Tersimpan di Sesi` muncul di formulir saat terdapat draf aktif.
+   - Peringatan `beforeunload` saat browser hendak ditutup dan konfirmasi sebelum mengosongkan draf.
+6. **Dialog Konfirmasi Aktivasi Versi Bobot AHP ([`DecisionEnginePanel.jsx`](../frontend/src/components/DecisionEnginePanel.jsx)):**
+   - Tombol "Setujui & Aktifkan" pada versi bobot AHP konsisten kini memunculkan modal dialog konfirmasi (`.confirm-modal-box`) yang merinci nomor versi, nilai CR, dan peringatan bahwa status berubah menjadi `APPROVED` secara permanen, dengan tombol "Batal" dan "Ya, Setujui & Aktifkan Bobot".
+7. **Pembersihan Dead Code & Pembaruan Komponen:**
+   - Ekstraksi komponen [`AuthorizedPhotoThumb.jsx`](../frontend/src/components/AuthorizedPhotoThumb.jsx) untuk merender foto laporan terproteksi token Bearer.
+   - Pembaruan teks footer pada [`MainLayout.jsx`](../frontend/src/layouts/MainLayout.jsx) menghapus referensi "PRD 04".
+   - Penghapusan berkas dead code Vite (`App.css`, `index.css`, `hero.png`, `react.svg`, `vite.svg`).
 
 ## Ringkasan Verifikasi PRD 05.4 (Manual End-to-End Verification)
 
@@ -61,13 +88,14 @@ Diperbarui: 2026-10-30 02:20 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 
 | Perintah | Hasil Aktual | Tanggal |
 |---|---|---|
-| Verifikasi Browser E2E (Google Chrome CDP — Skenario A–E pada `roadpriority_test`) | **`B_webgis=PASS, A_auth=PASS, C_reporting_and_assessment=PASS, D_data_readiness=PASS, E_ahp_topsis=PASS`** (`0 console/page errors`) | 2026-10-30 01:47 WIB |
-| `php artisan test` (pada `roadpriority_test`) | **`130 passed` (0 failed, 447 assertions)** dalam `5.07s` | 2026-10-30 01:48 WIB |
+| Verifikasi Browser Nyata PRD 06.2 (Chrome CDP via `run_prd062_verification.mjs`) | **`viewports=PASS (hasOverflow: false), url_sync=PASS, form_draft=PASS, data_tables=PASS, activation_modal=PASS`** (`0 console/page errors`) | 2026-10-30 02:59 WIB |
+| `php artisan test` (pada `roadpriority_test`) | **`130 passed` (0 failed, 447 assertions)** dalam `4.97s` | 2026-10-30 03:00 WIB |
+| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` (15 berkas dalam `78ms`) | 2026-10-30 02:59 WIB |
+| `npm run build` (`frontend/`) | `✓ built in 227ms` (`dist/assets/index-CuwYjcSx.js` 446.87 kB, `index-otHChAVi.css` 26.97 kB) | 2026-10-30 02:59 WIB |
+| Verifikasi Browser E2E PRD 05.4 (Chrome CDP — Skenario A–E pada `roadpriority_test`) | **`B_webgis=PASS, A_auth=PASS, C_reporting_and_assessment=PASS, D_data_readiness=PASS, E_ahp_topsis=PASS`** (`0 console/page errors`) | 2026-10-30 01:47 WIB |
 | `php artisan roadpriority:import-segments database/fixtures/synthetic_sample_segments.geojson --dry-run` | **`total_features=3, valid_features=3, rejected_features=0, created_count=3, rolled_back=TIDAK`** (0 baris ditulis ke DB `roadpriority`) | 2026-10-30 01:16 WIB |
 | `python tests/Reference/ahp_topsis_reference.py` vs `tests/Fixtures/reference.json` | **`REFERENCE_JSON_MATCH: EXACT (0 differences)`** | 2026-10-30 00:25 WIB |
 | `php artisan db:seed` & `DemoSimulationSeeder` (2x pada `roadpriority`) | Idempoten: `users=1`, `decision_criteria=7`, `road_segments=4` (demo), `damage_reports=4` (demo), `damage_assessments=4` (demo), `official_rows=0` | 2026-10-30 01:48 WIB |
-| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` (14 berkas dalam `79ms`) | 2026-10-30 01:48 WIB |
-| `npm run build` (`frontend/`) | `✓ built in 239ms` (`dist/assets/index-DX6Nc2jd.js` 441.61 kB, `index-BK8-Xho-.css` 24.27 kB) | 2026-10-30 01:48 WIB |
 
 ## Issue terbuka & Batasan Data
 
@@ -78,9 +106,8 @@ Diperbarui: 2026-10-30 02:20 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 
 ## Langkah berikutnya yang disarankan
 
-1. Gunakan perintah `php artisan roadpriority:import-segments <path_geojson> --dry-run` terlebih dahulu saat dataset GeoJSON wilayah studi resmi sudah tersedia, kemudian jalankan tanpa `--dry-run` untuk memuat segmen resmi ke database.
-2. Lanjutkan ke **PRD 06.2** (Implementasi perbaikan sistem desain, navigasi URL, konsistensi komponen, dan responsivitas berdasarkan temuan audit PRD 06.1).
-3. Lanjutkan ke **PRD 06.3** (Implementasi perbaikan aksesibilitas, interaksi WebGIS choropleth, dan optimasi performa frontend).
+1. Lanjutkan ke **PRD 06.3** (Advanced Interaction, Optimization & Accessibility: debounce search input, granular re-fetching, pemecahan bundle/code-splitting, audit aksesibilitas penuh ARIA pada matriks AHP, dan pewarnaan garis jalan choropleth WebGIS).
+2. Gunakan perintah `php artisan roadpriority:import-segments <path_geojson> --dry-run` terlebih dahulu saat dataset GeoJSON wilayah studi resmi sudah tersedia, kemudian jalankan tanpa `--dry-run` untuk memuat segmen resmi ke database.
 
 ## Dokumentasi Audit PRD 06.1 (UI/UX & Performa Frontend)
 
