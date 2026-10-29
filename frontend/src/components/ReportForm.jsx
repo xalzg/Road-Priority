@@ -88,37 +88,59 @@ export default function ReportForm({
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setGpsStatus({
         type: 'error',
-        text: 'Perangkat atau browser ini tidak mendukung Geolocation API. Silakan pilih titik lokasi secara manual pada peta.',
+        text: 'Perangkat atau browser ini tidak mendukung Geolocation API. Silakan klik langsung pada peta untuk menentukan titik lokasi.',
       })
       return
     }
 
-    setGpsStatus({ type: 'loading', text: 'Mengambil koordinat GPS perangkat…' })
+    setGpsStatus({ type: 'loading', text: 'Mengambil koordinat lokasi perangkat…' })
 
+    const applyPosition = (pos) => {
+      const lat = Number(pos.coords.latitude.toFixed(7))
+      const lng = Number(pos.coords.longitude.toFixed(7))
+      const acc = pos.coords.accuracy ? Number(pos.coords.accuracy.toFixed(1)) : ''
+      setLatitude(String(lat))
+      setLongitude(String(lng))
+      setGpsAccuracy(String(acc))
+      setGpsStatus({
+        type: 'ok',
+        text: `Lokasi perangkat berhasil diambil (akurasi ±${acc || '?'} m). Pin 📍 telah ditempatkan pada peta.`,
+      })
+    }
+
+    // Coba dengan high accuracy terlebih dahulu (mis. smartphone/GPS)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = Number(pos.coords.latitude.toFixed(7))
-        const lng = Number(pos.coords.longitude.toFixed(7))
-        const acc = pos.coords.accuracy ? Number(pos.coords.accuracy.toFixed(1)) : ''
-        setLatitude(String(lat))
-        setLongitude(String(lng))
-        setGpsAccuracy(String(acc))
-        setGpsStatus({
-          type: 'ok',
-          text: `Lokasi perangkat berhasil diambil (akurasi ±${acc || '?'} m). Anda tetap dapat menggeser pin di peta.`,
-        })
-      },
+      applyPosition,
       (err) => {
-        const reason =
-          err.code === 1
-            ? 'Izin akses lokasi (GPS) ditolak oleh pengguna.'
-            : 'Gagal memperoleh sinyal lokasi perangkat.'
+        // Jika bukan izin ditolak (mis. timeout/unavailable pada laptop/PC tanpa GPS satelit), coba fallback low accuracy (Wi-Fi/Network)
+        if (err.code !== 1) {
+          navigator.geolocation.getCurrentPosition(
+            applyPosition,
+            (fallbackErr) => {
+              let reason = 'Gagal memperoleh sinyal lokasi perangkat.'
+              if (fallbackErr.code === 1) {
+                reason = 'Izin akses lokasi ditolak oleh browser. Klik ikon gembok/setelan di bilah alamat browser untuk mengizinkan akses lokasi.'
+              } else if (fallbackErr.code === 2) {
+                reason = 'Layanan lokasi tidak tersedia (pastikan Location Services aktif di Pengaturan Windows).'
+              } else if (fallbackErr.code === 3) {
+                reason = 'Waktu pencarian lokasi habis (timeout).'
+              }
+              setGpsStatus({
+                type: 'error',
+                text: `${reason} Silakan klik langsung pada peta untuk menentukan titik lokasi laporan.`,
+              })
+            },
+            { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
+          )
+          return
+        }
+
         setGpsStatus({
           type: 'error',
-          text: `${reason} Silakan klik pada peta atau isi koordinat secara manual.`,
+          text: 'Izin akses lokasi ditolak oleh browser. Klik ikon gembok/setelan di sebelah URL browser untuk mengizinkan "Lokasi", atau klik langsung pada peta.',
         })
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
     )
   }
 
