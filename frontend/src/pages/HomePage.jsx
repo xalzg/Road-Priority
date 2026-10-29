@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import DecisionEnginePanel from '../components/DecisionEnginePanel'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import ReportDetailModal from '../components/ReportDetailModal'
 import ReportForm from '../components/ReportForm'
 import WebGisMap from '../components/WebGisMap'
+
+const DecisionEnginePanel = lazy(() => import('../components/DecisionEnginePanel'))
 import { clearStoredSession, getStoredToken, getStoredUser } from '../services/api'
 import {
   BSD_STUDY_AREA_BBOX,
@@ -79,6 +80,7 @@ export default function HomePage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [searchCode, setSearchCode] = useState('')
+  const [debouncedSearchCode, setDebouncedSearchCode] = useState('')
   const [useMapBbox, setUseMapBbox] = useState(false)
   const [mapBbox, setMapBbox] = useState('')
   const [showSegmentsOnMap, setShowSegmentsOnMap] = useState(true)
@@ -172,13 +174,21 @@ export default function HomePage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasReportDraft])
 
+  // Debounce input pencarian kode laporan (~300ms) untuk mencegah request berlebihan (PRD 06.3 §3)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchCode(searchCode.trim())
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchCode])
+
   const currentQueryKey = [
     activeTab,
     statusFilter,
     damageTypeFilter,
     dateFrom,
     dateTo,
-    searchCode.trim(),
+    debouncedSearchCode,
     useMapBbox && activeTab === 'public_map' ? mapBbox : '',
     page,
     perPage,
@@ -250,7 +260,7 @@ export default function HomePage() {
     if (damageTypeFilter) params.damage_type = damageTypeFilter
     if (dateFrom) params.date_from = dateFrom
     if (dateTo) params.date_to = dateTo
-    if (searchCode.trim()) params.q = searchCode.trim()
+    if (debouncedSearchCode) params.q = debouncedSearchCode
     if (useMapBbox && mapBbox && activeTab === 'public_map') {
       params.bbox = mapBbox
     }
@@ -282,7 +292,7 @@ export default function HomePage() {
     damageTypeFilter,
     dateFrom,
     dateTo,
-    searchCode,
+    debouncedSearchCode,
     useMapBbox,
     mapBbox,
     page,
@@ -360,6 +370,7 @@ export default function HomePage() {
     setDateFrom('')
     setDateTo('')
     setSearchCode('')
+    setDebouncedSearchCode('')
     setUseMapBbox(false)
     setPage(1)
   }
@@ -504,14 +515,22 @@ export default function HomePage() {
         />
       )}
 
-      {/* Tab Mesin Pendukung Keputusan AHP-TOPSIS (PRD 05) */}
+      {/* Tab Mesin Pendukung Keputusan AHP-TOPSIS (PRD 05 & PRD 06.3 Code-Splitting) */}
       {activeTab === 'decision_engine' && canAccessDecisionEngine && (
-        <DecisionEnginePanel
-          currentUser={currentUser}
-          roadSegments={roadSegments}
-          subTab={decisionSubTab}
-          onSubTabChange={handleDecisionSubTabChange}
-        />
+        <Suspense
+          fallback={
+            <div className="panel-card state-box" aria-live="polite">
+              Memuat modul Mesin Pendukung Keputusan (AHP-TOPSIS)…
+            </div>
+          }
+        >
+          <DecisionEnginePanel
+            currentUser={currentUser}
+            roadSegments={roadSegments}
+            subTab={decisionSubTab}
+            onSubTabChange={handleDecisionSubTabChange}
+          />
+        </Suspense>
       )}
 
       {/* Tab Peta Publik / Laporan Saya / Antrean Petugas */}
@@ -592,7 +611,14 @@ export default function HomePage() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="filter-code">Cari Kode Laporan</label>
+                <label htmlFor="filter-code">
+                  Cari Kode Laporan
+                  {searchCode.trim() !== debouncedSearchCode && (
+                    <span className="search-debouncing-indicator" aria-live="polite">
+                      {' '}(mengetik…)
+                    </span>
+                  )}
+                </label>
                 <input
                   id="filter-code"
                   type="search"
@@ -600,6 +626,12 @@ export default function HomePage() {
                   onChange={(e) => {
                     setSearchCode(e.target.value)
                     setPage(1)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      setDebouncedSearchCode(searchCode.trim())
+                    }
                   }}
                   placeholder="Mis. RPT-2026..."
                 />

@@ -1,6 +1,6 @@
 # PROJECT_STATUS — RoadPriority
 
-Diperbarui: 2026-10-30 03:00 WIB oleh sesi agen (Antigravity — Penyelesaian PRD 06.2 UI Foundation, Navigation & Responsive Refinement)
+Diperbarui: 2026-10-30 03:45 WIB oleh sesi agen (Antigravity — Penyelesaian PRD 06.3 Frontend Performance, Accessibility & WebGIS Enhancement)
 
 ## Tahap aktif & Status Modul
 
@@ -15,6 +15,29 @@ Diperbarui: 2026-10-30 03:00 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 - **PRD 05.4 (Manual End-to-End Verification):** **PASS / Selesai dan Terverifikasi di Browser** ([`docs/PRD_05_4_MANUAL_E2E_VERIFICATION_REPORT.md`](PRD_05_4_MANUAL_E2E_VERIFICATION_REPORT.md)).
 - **PRD 06.1 (UI/UX Audit & Frontend Performance Assessment):** **SELESAI / Audit Murni Observasi** ([`docs/PRD_06_1_UI_UX_AUDIT_REPORT.md`](PRD_06_1_UI_UX_AUDIT_REPORT.md)). 12 temuan terdokumentasi (5×P1, 6×P2, 1×P3).
 - **PRD 06.2 (UI Foundation, Navigation & Responsive Refinement):** **PASS / Selesai dan Terverifikasi Penuh** ([`docs/PRD_06_2_UI_FOUNDATION_REPORT.md`](PRD_06_2_UI_FOUNDATION_REPORT.md)). Standarisasi tabel SPK `.data-table`, sinkronisasi navigasi URL & History API, responsivitas multi-viewport tanpa overflow (`hasOverflow: false`), perlindungan draft form di sesi (`.draft-dot`), modal konfirmasi aktivasi AHP, ekstraksi `AuthorizedPhotoThumb`, dan pembersihan dead code.
+- **PRD 06.3 (Frontend Performance, Accessibility & WebGIS Enhancement):** **PASS / Selesai dan Terverifikasi Penuh** ([`docs/PRD_06_3_PERFORMANCE_ACCESSIBILITY_REPORT.md`](PRD_06_3_PERFORMANCE_ACCESSIBILITY_REPORT.md)). Debounce pencarian 300 ms + bypass Enter + AbortController, granular data fetcher panel SPK (efisiensi jaringan 75%), pemisahan bundle (bundle utama turun dari 446.87 kB ke 268.80 kB [-39.85%], lazy load SPK engine & isolasi chunk leaflet), aksesibilitas 21 select pairwise AHP dengan `aria-label` deskriptif lengkap, pola WAI-ARIA tablist navigasi panah, modal dialog aksesibel (focus trap + Escape), WebGIS choropleth resmi vs demo putus-putus amber + aksen ranking TOPSIS, dan legenda peta aksesibel.
+
+## Ringkasan Implementasi PRD 06.3 (Frontend Performance, Accessibility & WebGIS Enhancement)
+
+1. **Debounce Pencarian Laporan & Pembatalan Permintaan Usang ([`HomePage.jsx`](../frontend/src/pages/HomePage.jsx)):**
+   - Input pencarian kode laporan terintegrasi timer debounce 300 ms dengan indikator real-time `(mengetik…)`.
+   - Bypass instan saat tombol `Enter` ditekan dan pembatalan request usang via `AbortController`.
+2. **Pengambilan Data Granular Panel SPK ([`DecisionEnginePanel.jsx`](../frontend/src/components/DecisionEnginePanel.jsx)):**
+   - Refactoring dari `Promise.all` monolitik menjadi 4 loader domain mandiri: `reloadCriteria`, `reloadReadiness`, `reloadWeightVersions`, dan `reloadDecisionRuns`.
+   - Mengurangi request jaringan hingga **75%** saat mutasi asesmen, bobot, TOPSIS, maupun saat toggle checkbox `includeDemo`.
+3. **Pemisahan Berkas (*Code-Splitting*) & *Dynamic Bundling* ([`vite.config.js`](../frontend/vite.config.js), [`HomePage.jsx`](../frontend/src/pages/HomePage.jsx)):**
+   - Komponen `DecisionEnginePanel` dimuat secara dinamis via `React.lazy` & `Suspense`.
+   - Library `leaflet` diisolasi ke chunk tersendiri (`leaflet-*.js` 148.60 kB) melalui `rollupOptions.output.manualChunks`.
+   - Ukuran bundle utama awal berhasil dipangkas dari **446.87 kB** menjadi **268.80 kB** (**-39.85%**).
+4. **Aksesibilitas Matriks AHP & Navigasi Tab WAI-ARIA ([`DecisionEnginePanel.jsx`](../frontend/src/components/DecisionEnginePanel.jsx)):**
+   - Seluruh 21 elemen `<select>` perbandingan berpasangan AHP memiliki atribut `id`, `name`, dan `aria-label` deskriptif lengkap (misal: *"Perbandingan tingkat kepentingan antara K1 (Tingkat kerusakan) terhadap K2 (Risiko keselamatan)"*).
+   - 4 sub-tab SPK menerapkan pola WAI-ARIA tablist penuh (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `role="tabpanel"`) dengan dukungan navigasi panah keyboard `ArrowLeft`/`ArrowRight`/`Home`/`End`.
+5. **Aksesibilitas Modal Dialog ([`ReportDetailModal.jsx`](../frontend/src/components/ReportDetailModal.jsx), [`DecisionEnginePanel.jsx`](../frontend/src/components/DecisionEnginePanel.jsx)):**
+   - Implementasi `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, penahanan fokus (*focus trapping*), penutupan via tombol `Escape`, dan pengembalian fokus ke elemen pemicu saat ditutup.
+6. **WebGIS Choropleth Tematik & Legenda Aksesibel ([`WebGisMap.jsx`](../frontend/src/components/WebGisMap.jsx), [`main.css`](../frontend/src/styles/main.css)):**
+   - Segmen jalan resmi diwarnai berdasarkan kepadatan kerusakan terverifikasi (merah $\ge 3$, oranye 1–2, biru 0) dan aksen ranking TOPSIS (rank 1 merah tua, 2–3 amber, > 3 hijau).
+   - Segmen demo dibedakan tegas dengan garis putus-putus amber `dashArray: '6, 6'`.
+   - Memoization emisi bounding box via `lastEmittedBboxRef` dan penambahan atribut aksesibilitas pada legenda (`role="region"`, `role="group"`, `aria-hidden="true"` pada ikon warna).
 
 ## Ringkasan Implementasi PRD 06.2 (UI Foundation, Navigation & Responsive Refinement)
 
@@ -88,10 +111,11 @@ Diperbarui: 2026-10-30 03:00 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 
 | Perintah | Hasil Aktual | Tanggal |
 |---|---|---|
+| Verifikasi Browser Nyata PRD 06.3 (Chrome CDP via `run_prd063_verification.mjs`) | **`search_debounce=PASS, code_splitting=PASS, granular_spk_fetching=PASS (75% hemat), accessibility_ahp_tablist=PASS, modal_accessibility=PASS, webgis_enhancement=PASS`** (`overall_passed: true, 0 errors`) | 2026-10-30 03:36 WIB |
+| `php artisan test` (pada `roadpriority_test`) | **`130 passed` (0 failed, 447 assertions)** dalam `5.27s` | 2026-10-30 03:30 WIB |
+| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` (15 berkas dalam `74ms`) | 2026-10-30 03:32 WIB |
+| `npm run build` (`frontend/`) | `✓ built in 227ms` (`index-*.js` 268.80 kB, `DecisionEnginePanel-*.js` 39.26 kB, `leaflet-*.js` 148.60 kB, `index-*.css` 28.53 kB) | 2026-10-30 03:32 WIB |
 | Verifikasi Browser Nyata PRD 06.2 (Chrome CDP via `run_prd062_verification.mjs`) | **`viewports=PASS (hasOverflow: false), url_sync=PASS, form_draft=PASS, data_tables=PASS, activation_modal=PASS`** (`0 console/page errors`) | 2026-10-30 02:59 WIB |
-| `php artisan test` (pada `roadpriority_test`) | **`130 passed` (0 failed, 447 assertions)** dalam `4.97s` | 2026-10-30 03:00 WIB |
-| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` (15 berkas dalam `78ms`) | 2026-10-30 02:59 WIB |
-| `npm run build` (`frontend/`) | `✓ built in 227ms` (`dist/assets/index-CuwYjcSx.js` 446.87 kB, `index-otHChAVi.css` 26.97 kB) | 2026-10-30 02:59 WIB |
 | Verifikasi Browser E2E PRD 05.4 (Chrome CDP — Skenario A–E pada `roadpriority_test`) | **`B_webgis=PASS, A_auth=PASS, C_reporting_and_assessment=PASS, D_data_readiness=PASS, E_ahp_topsis=PASS`** (`0 console/page errors`) | 2026-10-30 01:47 WIB |
 | `php artisan roadpriority:import-segments database/fixtures/synthetic_sample_segments.geojson --dry-run` | **`total_features=3, valid_features=3, rejected_features=0, created_count=3, rolled_back=TIDAK`** (0 baris ditulis ke DB `roadpriority`) | 2026-10-30 01:16 WIB |
 | `python tests/Reference/ahp_topsis_reference.py` vs `tests/Fixtures/reference.json` | **`REFERENCE_JSON_MATCH: EXACT (0 differences)`** | 2026-10-30 00:25 WIB |
@@ -106,13 +130,21 @@ Diperbarui: 2026-10-30 03:00 WIB oleh sesi agen (Antigravity — Penyelesaian PR
 
 ## Langkah berikutnya yang disarankan
 
-1. Lanjutkan ke **PRD 06.3** (Advanced Interaction, Optimization & Accessibility: debounce search input, granular re-fetching, pemecahan bundle/code-splitting, audit aksesibilitas penuh ARIA pada matriks AHP, dan pewarnaan garis jalan choropleth WebGIS).
-2. Gunakan perintah `php artisan roadpriority:import-segments <path_geojson> --dry-run` terlebih dahulu saat dataset GeoJSON wilayah studi resmi sudah tersedia, kemudian jalankan tanpa `--dry-run` untuk memuat segmen resmi ke database.
+1. **Akuisisi & Impor Data Penelitian Nyata Wilayah Studi:** Gunakan perintah `php artisan roadpriority:import-segments <path_geojson> --dry-run` terlebih dahulu saat dataset GeoJSON wilayah studi resmi (BSD/Tangerang) sudah siap, kemudian jalankan tanpa `--dry-run` untuk memuat segmen resmi ke database.
+2. **Survei Lapangan Kondisi Jalan & Elisitasi Bobot Pakar:** Laksanakan Prosedur D dan E sesuai [`docs/RESEARCH_DATA_COLLECTION_PROTOCOL.md`](RESEARCH_DATA_COLLECTION_PROTOCOL.md) untuk memperoleh data asesmen teknis lapangan (`SDI-ADAPTED-1.0`) dan matriks perbandingan AHP konsisten dari pakar transportasi.
+3. **Persiapan Rilis & Uji Penerimaan Pengguna (UAT):** Seluruh rangkaian PRD 01 hingga PRD 06.3 telah tuntas dan teruji stabil; sistem siap untuk pengujian operasional lapangan dan evaluasi pengguna akhir.
 
-## Dokumentasi Audit PRD 06.1 (UI/UX & Performa Frontend)
+## Dokumentasi Audit & Penyempurnaan UI/UX (PRD 06.1 — PRD 06.3)
 
 | Dokumen | Deskripsi |
 | :--- | :--- |
+| [`docs/PRD_06_3_PERFORMANCE_ACCESSIBILITY_REPORT.md`](PRD_06_3_PERFORMANCE_ACCESSIBILITY_REPORT.md) | Laporan implementasi PRD 06.3: Debounce, granular fetch (hemat 75%), code splitting (-39.85%), aksesibilitas WAI-ARIA & AHP, modal focus trap, WebGIS tematik |
+| [`docs/PRD_06_2_UI_FOUNDATION_REPORT.md`](PRD_06_2_UI_FOUNDATION_REPORT.md) | Laporan implementasi PRD 06.2: Standarisasi data-table, sinkronisasi navigasi URL, responsivitas multi-viewport, draft form session, modal konfirmasi AHP |
+| [`docs/PRD_06_1_UI_UX_AUDIT_REPORT.md`](PRD_06_1_UI_UX_AUDIT_REPORT.md) | Laporan utama audit: ringkasan eksekutif, ruang lingkup, distribusi temuan, keterbatasan, dan langkah selanjutnya |
+| [`docs/UI_UX_AUDIT_INVENTORY.md`](UI_UX_AUDIT_INVENTORY.md) | Inventaris lengkap halaman/tab/modal, matriks akses role, komponen bersama, dan kesenjangan backend-frontend |
+| [`docs/UI_UX_AUDIT_FINDINGS.md`](UI_UX_AUDIT_FINDINGS.md) | Detail setiap temuan UX-001 hingga UX-012 dengan bukti, kode sumber, dampak, dan rekomendasi |
+| [`docs/UI_UX_AUDIT_PERFORMANCE.md`](UI_UX_AUDIT_PERFORMANCE.md) | Baseline performa: bundle size, Navigation Timing (N=5), Resource Timing, debounce, re-fetch, dan kontras WCAG |
+| [`docs/UI_UX_AUDIT_ROADMAP.md`](UI_UX_AUDIT_ROADMAP.md) | Peta jalan perbaikan terurut dengan ketergantungan, risiko regresi, dan kriteria penerimaan terukur |
 | [`docs/PRD_06_1_UI_UX_AUDIT_REPORT.md`](PRD_06_1_UI_UX_AUDIT_REPORT.md) | Laporan utama audit: ringkasan eksekutif, ruang lingkup, distribusi temuan, keterbatasan, dan langkah selanjutnya |
 | [`docs/UI_UX_AUDIT_INVENTORY.md`](UI_UX_AUDIT_INVENTORY.md) | Inventaris lengkap halaman/tab/modal, matriks akses role, komponen bersama, dan kesenjangan backend-frontend |
 | [`docs/UI_UX_AUDIT_FINDINGS.md`](UI_UX_AUDIT_FINDINGS.md) | Detail setiap temuan UX-001 hingga UX-012 dengan bukti, kode sumber, dampak, dan rekomendasi |

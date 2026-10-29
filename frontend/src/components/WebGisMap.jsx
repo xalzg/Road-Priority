@@ -100,6 +100,7 @@ export default function WebGisMap({
   const pickerMarkerRef = useRef(null)
   const studyBoxLayerRef = useRef(null)
   const debounceTimerRef = useRef(null)
+  const lastEmittedBboxRef = useRef('')
 
   const onSelectReportRef = useRef(onSelectReport)
   const onBoundsChangeRef = useRef(onBoundsChange)
@@ -149,7 +150,10 @@ export default function WebGisMap({
           b.getEast().toFixed(6),
           b.getNorth().toFixed(6),
         ].join(',')
-        onBoundsChangeRef.current?.(bboxStr)
+        if (bboxStr !== lastEmittedBboxRef.current) {
+          lastEmittedBboxRef.current = bboxStr
+          onBoundsChangeRef.current?.(bboxStr)
+        }
       }, 350)
     }
 
@@ -212,18 +216,67 @@ export default function WebGisMap({
 
       if (latLngs.length < 2) return
 
+      const isDemo = Boolean(seg.is_demo)
+      const verifiedCount = Number(seg.verified_reports_count ?? 0)
+      const topsisRank = seg.topsis_rank ?? seg.priority_rank ?? null
+
+      let color = '#2563eb'
+      let weight = 3.5
+
+      if (topsisRank !== null && topsisRank !== undefined) {
+        if (Number(topsisRank) === 1) {
+          color = '#b91c1c'
+          weight = 6
+        } else if (Number(topsisRank) <= 3) {
+          color = '#d97706'
+          weight = 5
+        } else {
+          color = '#059669'
+          weight = 4
+        }
+      } else {
+        if (verifiedCount >= 3) {
+          color = '#dc2626'
+          weight = 5
+        } else if (verifiedCount >= 1) {
+          color = '#ea580c'
+          weight = 4
+        } else {
+          color = '#2563eb'
+          weight = 3.5
+        }
+      }
+
       const polyline = L.polyline(latLngs, {
-        color: '#0284c7',
-        weight: 4,
-        opacity: 0.8,
+        color: isDemo ? '#d97706' : color,
+        weight,
+        opacity: isDemo ? 0.75 : 0.88,
+        dashArray: isDemo ? '6, 6' : undefined,
       })
+
+      const demoBadge = isDemo
+        ? `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.75rem;font-weight:600;background:#fef3c7;color:#92400e;margin-top:2px;">[DATA DEMO]</span>`
+        : `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.75rem;font-weight:600;background:#dcfce7;color:#166534;margin-top:2px;">[DATA RESMI]</span>`
+
+      const lengthText = seg.length_km ? `${Number(seg.length_km).toFixed(2)} km` : '-'
+      const topsisHtml =
+        topsisRank !== null && topsisRank !== undefined
+          ? `<div style="margin-top:4px;padding:3px 6px;background:#f1f5f9;border-left:3px solid ${color};border-radius:3px;">
+               <strong>Prioritas TOPSIS: Peringkat #${topsisRank}</strong><br/>
+               <small>Koefisien Kedekatan (Ci): ${Number(seg.topsis_score ?? seg.closeness_coefficient ?? 0).toFixed(4)}</small>
+             </div>`
+          : ''
 
       const popupHtml = `
         <div class="map-popup">
-          <strong>${escapeHtml(seg.road_reference_code)}</strong><br/>
-          <span>${escapeHtml(seg.name)}</span><br/>
-          <small>Fungsi: ${escapeHtml(seg.road_function || '-')} | Kewenangan: ${escapeHtml(seg.road_authority || '-')}</small><br/>
-          <small>Laporan terverifikasi: <strong>${Number(seg.verified_reports_count ?? 0)}</strong></small>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+            <strong>${escapeHtml(seg.road_reference_code)}</strong>
+            ${demoBadge}
+          </div>
+          <div style="font-weight:600;font-size:0.95rem;margin:2px 0;">${escapeHtml(seg.name)}</div>
+          <small>Panjang: ${escapeHtml(lengthText)} | Fungsi: ${escapeHtml(seg.road_function || '-')} | Kewenangan: ${escapeHtml(seg.road_authority || '-')}</small><br/>
+          <small>Laporan terverifikasi: <strong>${verifiedCount}</strong></small>
+          ${topsisHtml}
         </div>
       `
       polyline.bindPopup(popupHtml)
@@ -372,12 +425,45 @@ export default function WebGisMap({
         style={{ height }}
         aria-label="Peta interaktif laporan kerusakan jalan RoadPriority"
       />
-      <div className="webgis-map-legend" aria-label="Legenda peta">
-        <span><i className="legend-dot" style={{ background: STATUS_COLORS.verified }} /> Terverifikasi</span>
-        <span><i className="legend-dot" style={{ background: STATUS_COLORS.resolved }} /> Ditangani</span>
-        <span><i className="legend-dot" style={{ background: STATUS_COLORS.under_review }} /> Ditinjau</span>
-        <span><i className="legend-dot" style={{ background: STATUS_COLORS.submitted }} /> Baru Masuk</span>
-        <span><i className="legend-line" /> Segmen Jalan</span>
+      <div
+        className="webgis-map-legend"
+        role="region"
+        aria-label="Legenda peta interaktif kerusakan dan ruas jalan"
+      >
+        <div className="legend-group" role="group" aria-label="Status laporan kerusakan">
+          <span className="legend-title">Laporan:</span>
+          <span>
+            <i className="legend-dot" style={{ background: STATUS_COLORS.verified }} aria-hidden="true" />{' '}
+            Terverifikasi
+          </span>
+          <span>
+            <i className="legend-dot" style={{ background: STATUS_COLORS.resolved }} aria-hidden="true" />{' '}
+            Ditangani
+          </span>
+          <span>
+            <i className="legend-dot" style={{ background: STATUS_COLORS.under_review }} aria-hidden="true" />{' '}
+            Ditinjau
+          </span>
+          <span>
+            <i className="legend-dot" style={{ background: STATUS_COLORS.submitted }} aria-hidden="true" />{' '}
+            Baru Masuk
+          </span>
+        </div>
+        <div className="legend-group" role="group" aria-label="Kategori intensitas dan status ruas jalan">
+          <span className="legend-title">Ruas Jalan:</span>
+          <span>
+            <i className="legend-line" style={{ background: '#dc2626' }} aria-hidden="true" /> &ge; 3 Laporan
+          </span>
+          <span>
+            <i className="legend-line" style={{ background: '#ea580c' }} aria-hidden="true" /> 1–2 Laporan
+          </span>
+          <span>
+            <i className="legend-line" style={{ background: '#2563eb' }} aria-hidden="true" /> 0 Laporan
+          </span>
+          <span>
+            <i className="legend-line legend-line-demo" aria-hidden="true" /> Ruas Demo
+          </span>
+        </div>
       </div>
     </div>
   )

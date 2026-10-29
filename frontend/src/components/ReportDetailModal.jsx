@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AuthorizedPhotoThumb from './AuthorizedPhotoThumb'
 import {
   ALLOWED_STATUS_TRANSITIONS,
@@ -19,6 +19,9 @@ export default function ReportDetailModal({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const modalRef = useRef(null)
+  const previousActiveElementRef = useRef(null)
+
   // State form verifikasi petugas
   const [nextStatus, setNextStatus] = useState('')
   const [selectedSegmentId, setSelectedSegmentId] = useState('')
@@ -30,6 +33,64 @@ export default function ReportDetailModal({
 
   const isOfficerOrAdmin =
     currentUser && (currentUser.role === 'officer' || currentUser.role === 'admin')
+
+  // Focus trapping & Escape key listener
+  useEffect(() => {
+    previousActiveElementRef.current = document.activeElement
+
+    const focusTimer = setTimeout(() => {
+      if (modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length > 0) {
+          focusable[0].focus()
+        }
+      }
+    }, 50)
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose?.()
+        return
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusables = Array.from(
+          modalRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        )
+        if (focusables.length === 0) return
+
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+
+        if (e.shiftKey) {
+          if (document.activeElement === first || !modalRef.current.contains(document.activeElement)) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last || !modalRef.current.contains(document.activeElement)) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      clearTimeout(focusTimer)
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previousActiveElementRef.current?.focus) {
+        previousActiveElementRef.current.focus()
+      }
+    }
+  }, [onClose])
 
   useEffect(() => {
     if (!reportIdOrCode) return undefined
@@ -101,13 +162,28 @@ export default function ReportDetailModal({
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Detail laporan kerusakan">
-      <div className="modal-card">
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="report-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !updating) {
+          onClose?.()
+        }
+      }}
+    >
+      <div className="modal-card" ref={modalRef} tabIndex="-1">
         <div className="modal-header">
-          <h3>
+          <h3 id="report-modal-title">
             Detail Laporan {detail?.report_code ? `— ${detail.report_code}` : ''}
           </h3>
-          <button type="button" className="btn-secondary btn-sm" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={onClose}
+            aria-label="Tutup modal detail laporan"
+          >
             Tutup ✕
           </button>
         </div>

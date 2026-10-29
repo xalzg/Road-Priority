@@ -4,6 +4,17 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/leaflet')) {
+            return 'leaflet'
+          }
+        },
+      },
+    },
+  },
   server: {
     // Teruskan request /api dari frontend (port 5173) ke Laravel (port 8000)
     // selama development, sehingga tidak perlu konfigurasi CORS khusus.

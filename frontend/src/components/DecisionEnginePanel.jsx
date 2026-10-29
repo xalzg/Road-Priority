@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   SAATY_SCALE_OPTIONS,
   activateWeightVersion,
@@ -14,6 +14,13 @@ import {
   updateCriterion,
 } from '../services/decisionService'
 
+const SUBTABS = [
+  'criteria_readiness',
+  'ahp_weights',
+  'topsis_runs',
+  'run_verification',
+]
+
 export default function DecisionEnginePanel({
   currentUser,
   roadSegments = [],
@@ -24,7 +31,6 @@ export default function DecisionEnginePanel({
   const subTab = propSubTab || internalSubTab
   const setSubTab = onSubTabChange || setInternalSubTab
   const [includeDemo, setIncludeDemo] = useState(false)
-  const [refreshCounter, setRefreshCounter] = useState(0)
   const [confirmActivateVersion, setConfirmActivateVersion] = useState(null)
 
   // Data utama dari backend
@@ -33,9 +39,17 @@ export default function DecisionEnginePanel({
   const [weightVersions, setWeightVersions] = useState([])
   const [decisionRuns, setDecisionRuns] = useState([])
   const [selectedRunDetail, setSelectedRunDetail] = useState(null)
-  const [loadedKey, setLoadedKey] = useState('')
+  const [initialLoaded, setInitialLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [actionBanner, setActionBanner] = useState(null)
+
+  // Granular loading states per domain
+  const [loadingDomain, setLoadingDomain] = useState({
+    criteria: false,
+    readiness: false,
+    weightVersions: false,
+    decisionRuns: false,
+  })
 
   // State form asesmen lapangan cepat (untuk petugas/admin melengkapi kesiapan data)
   const [assessSegmentId, setAssessSegmentId] = useState('')
@@ -59,48 +73,213 @@ export default function DecisionEnginePanel({
   const [runIsSimulation, setRunIsSimulation] = useState(false)
   const [runBusy, setRunBusy] = useState(false)
 
+  const confirmModalRef = useRef(null)
+  const confirmPreviousActiveRef = useRef(null)
+
   const isAdmin = currentUser?.role === 'admin'
   const isExpertOrAdmin = currentUser?.role === 'expert' || isAdmin
   const isOfficerOrAdmin = currentUser?.role === 'officer' || isAdmin
 
-  const queryKey = `${includeDemo ? 'demo' : 'official'}|${refreshCounter}`
-  const isLoading = loadedKey !== queryKey
+  const isLoading = !initialLoaded
 
+  const includeDemoRef = useRef(includeDemo)
   useEffect(() => {
-    const controller = new AbortController()
+    includeDemoRef.current = includeDemo
+  }, [includeDemo])
 
-    Promise.all([
-      fetchCriteria({ signal: controller.signal }),
-      fetchDataReadiness({ includeDemo, signal: controller.signal }),
-      fetchWeightVersions({ signal: controller.signal }),
-      fetchDecisionRuns({ signal: controller.signal }),
-    ])
-      .then(([critRes, readyRes, verRes, runsRes]) => {
-        const critList = critRes?.data || []
-        const verList = verRes?.data || []
-        const runList = runsRes?.data || []
+  // Granular fetchers per domain
+  const reloadCriteria = useCallback(async (signal) => {
+    setLoadingDomain((prev) => ({ ...prev, criteria: true }))
+    try {
+      const res = await fetchCriteria({ signal })
+      setCriteria(res?.data || [])
+    } catch (err) {
+      if (err.name !== 'AbortError') throw err
+    } finally {
+      setLoadingDomain((prev) => ({ ...prev, criteria: false }))
+    }
+  }, [])
 
-        setCriteria(critList)
-        setReadiness(readyRes?.data || null)
+  const reloadReadiness = useCallback(async (signal) => {
+    setLoadingDomain((prev) => ({ ...prev, readiness: true }))
+    try {
+      const res = await fetchDataReadiness({ includeDemo: includeDemoRef.current, signal })
+      setReadiness(res?.data || null)
+    } catch (err) {
+      if (err.name !== 'AbortError') throw err
+    } finally {
+      setLoadingDomain((prev) => ({ ...prev, readiness: false }))
+    }
+  }, [])
+
+  const reloadWeightVersions = useCallback(async (signal) => {
+    setLoadingDomain((prev) => ({ ...prev, weightVersions: true }))
+    try {
+      const res = await fetchWeightVersions({ signal })
+      const verList = res?.data || []
+      setWeightVersions(verList)
+      if (verList.length > 0) {
+        setSelectedVersionId((prev) => prev || String(verList[0].id))
+        const approved = verList.find((v) => v.status === 'approved')
+        setRunWeightVersionId((prev) => prev || String((approved || verList[0]).id))
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') throw err
+    } finally {
+      setLoadingDomain((prev) => ({ ...prev, weightVersions: false }))
+    }
+  }, [])
+
+  const reloadDecisionRuns = useCallback(async (signal) => {
+    setLoadingDomain((prev) => ({ ...prev, decisionRuns: true }))
+    try {
+      const res = await fetchDecisionRuns({ signal })
+      setDecisionRuns(res?.data || [])
+    } catch (err) {
+      if (err.name !== 'AbortError') throw err
+    } finally {
+      setLoadingDomain((prev) => ({ ...prev, decisionRuns: false }))
+    }
+  }, [])
+
+  const reloadAll = useCallback(async (signal) => {
+    setLoadError('')
+    setLoadingDomain({
+      criteria: true,
+      readiness: true,
+      weightVersions: true,
+      decisionRuns: true,
+    })
+    try {
+      const [critRes, readyRes, verRes, runsRes] = await Promise.allSettled([
+        fetchCriteria({ signal }),
+        fetchDataReadiness({ includeDemo: includeDemoRef.current, signal }),
+        fetchWeightVersions({ signal }),
+        fetchDecisionRuns({ signal }),
+      ])
+
+      if (critRes.status === 'fulfilled') {
+        setCriteria(critRes.value?.data || [])
+      }
+      if (readyRes.status === 'fulfilled') {
+        setReadiness(readyRes.value?.data || null)
+      }
+      if (verRes.status === 'fulfilled') {
+        const verList = verRes.value?.data || []
         setWeightVersions(verList)
-        setDecisionRuns(runList)
-        setLoadError('')
-        setLoadedKey(queryKey)
-
         if (verList.length > 0) {
           setSelectedVersionId((prev) => prev || String(verList[0].id))
           const approved = verList.find((v) => v.status === 'approved')
           setRunWeightVersionId((prev) => prev || String((approved || verList[0]).id))
         }
-      })
-      .catch((err) => {
-        if (err.name === 'AbortError') return
-        setLoadError(err.message || 'Gagal memuat data mesin keputusan AHP-TOPSIS.')
-        setLoadedKey(queryKey)
-      })
+      }
+      if (runsRes.status === 'fulfilled') {
+        setDecisionRuns(runsRes.value?.data || [])
+      }
 
+      const rejections = [critRes, readyRes, verRes, runsRes].filter(
+        (r) => r.status === 'rejected' && r.reason?.name !== 'AbortError'
+      )
+      if (rejections.length > 0) {
+        setLoadError('Sebagian data SPK gagal dimuat. Periksa koneksi backend.')
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setLoadError(err.message || 'Gagal memuat data SPK.')
+      }
+    } finally {
+      setLoadingDomain({
+        criteria: false,
+        readiness: false,
+        weightVersions: false,
+        decisionRuns: false,
+      })
+      setInitialLoaded(true)
+    }
+  }, [])
+
+  // Inisialisasi awal seluruh domain
+  useEffect(() => {
+    const controller = new AbortController()
+    Promise.resolve().then(() => {
+      if (!controller.signal.aborted) {
+        reloadAll(controller.signal)
+      }
+    })
     return () => controller.abort()
-  }, [includeDemo, queryKey])
+  }, [reloadAll])
+
+  // Perubahan includeDemo secara reaktif hanya memicu reload readiness
+  const isMountedRef = useRef(false)
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true
+      return undefined
+    }
+    const controller = new AbortController()
+    reloadReadiness(controller.signal).catch(() => {})
+    return () => controller.abort()
+  }, [includeDemo, reloadReadiness])
+
+  // Focus trap & Escape listener untuk modal konfirmasi aktivasi versi bobot
+  useEffect(() => {
+    if (!confirmActivateVersion) return undefined
+
+    confirmPreviousActiveRef.current = document.activeElement
+
+    const timer = setTimeout(() => {
+      if (confirmModalRef.current) {
+        const focusable = confirmModalRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length > 0) {
+          focusable[0].focus()
+        }
+      }
+    }, 50)
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !ahpBusy) {
+        e.preventDefault()
+        setConfirmActivateVersion(null)
+        return
+      }
+
+      if (e.key === 'Tab' && confirmModalRef.current) {
+        const focusables = Array.from(
+          confirmModalRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        )
+        if (focusables.length === 0) return
+
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+
+        if (e.shiftKey) {
+          if (document.activeElement === first || !confirmModalRef.current.contains(document.activeElement)) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last || !confirmModalRef.current.contains(document.activeElement)) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('keydown', handleKeyDown)
+      if (confirmPreviousActiveRef.current?.focus) {
+        confirmPreviousActiveRef.current.focus()
+      }
+    }
+  }, [confirmActivateVersion, ahpBusy])
 
   const activeCriteria = criteria.filter((c) => c.is_active)
 
@@ -133,6 +312,35 @@ export default function DecisionEnginePanel({
     return pairwiseValues[key] !== undefined ? Number(pairwiseValues[key]) : 1
   }
 
+  const handleSubTabKeyDown = (e) => {
+    const currentIndex = SUBTABS.indexOf(subTab)
+    if (currentIndex === -1) return
+
+    let nextIndex = null
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      nextIndex = (currentIndex + 1) % SUBTABS.length
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      nextIndex = (currentIndex - 1 + SUBTABS.length) % SUBTABS.length
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      nextIndex = 0
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      nextIndex = SUBTABS.length - 1
+    }
+
+    if (nextIndex !== null) {
+      const nextTab = SUBTABS[nextIndex]
+      setSubTab(nextTab)
+      setTimeout(() => {
+        const tabEl = document.getElementById(`decision-subtab-${nextTab}`)
+        tabEl?.focus()
+      }, 0)
+    }
+  }
+
   const handleToggleCriterionActive = async (criterion) => {
     setActionBanner(null)
     try {
@@ -141,7 +349,7 @@ export default function DecisionEnginePanel({
         type: 'success',
         text: `Status aktif kriteria ${criterion.code} berhasil diperbarui.`,
       })
-      setRefreshCounter((n) => n + 1)
+      await Promise.allSettled([reloadCriteria(), reloadReadiness()])
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -176,7 +384,7 @@ export default function DecisionEnginePanel({
         type: 'success',
         text: 'Penilaian kondisi lapangan (DamageAssessment) berhasil disimpan.',
       })
-      setRefreshCounter((n) => n + 1)
+      await reloadReadiness()
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -207,7 +415,7 @@ export default function DecisionEnginePanel({
         type: 'success',
         text: `Draft versi bobot "${created?.version_name}" berhasil dibuat. Silakan isi perbandingan berpasangan AHP di bawah.`,
       })
-      setRefreshCounter((n) => n + 1)
+      await reloadWeightVersions()
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -237,7 +445,7 @@ export default function DecisionEnginePanel({
         type: res?.data?.is_consistent ? 'success' : 'warning',
         text: res?.message || 'Perhitungan bobot AHP selesai.',
       })
-      setRefreshCounter((n) => n + 1)
+      await reloadWeightVersions()
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -258,7 +466,7 @@ export default function DecisionEnginePanel({
         type: 'success',
         text: res?.message || 'Versi bobot berhasil disetujui dan diaktifkan.',
       })
-      setRefreshCounter((n) => n + 1)
+      await reloadWeightVersions()
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -288,7 +496,7 @@ export default function DecisionEnginePanel({
         type: 'success',
         text: `Perhitungan prioritas TOPSIS (${res?.data?.run_code}) berhasil dieksekusi dan disimpan sebagai snapshot terverifikasi.`,
       })
-      setRefreshCounter((n) => n + 1)
+      await reloadDecisionRuns()
     } catch (err) {
       setActionBanner({
         type: 'error',
@@ -341,7 +549,10 @@ export default function DecisionEnginePanel({
           <button
             type="button"
             className="btn-secondary btn-sm"
-            onClick={() => setRefreshCounter((n) => n + 1)}
+            onClick={() => {
+              const c = new AbortController()
+              reloadAll(c.signal)
+            }}
           >
             Muat Ulang Data
           </button>
@@ -349,30 +560,56 @@ export default function DecisionEnginePanel({
       </div>
 
       {/* Sub-navigasi modul AHP-TOPSIS */}
-      <div className="nav-tabs decision-subtabs" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>
+      <div
+        className="nav-tabs decision-subtabs"
+        role="tablist"
+        aria-label="Sub-modul Sistem Pendukung Keputusan AHP-TOPSIS"
+        onKeyDown={handleSubTabKeyDown}
+        style={{ marginTop: '0.75rem', marginBottom: '1rem' }}
+      >
         <button
+          id="decision-subtab-criteria_readiness"
+          role="tab"
           type="button"
+          aria-selected={subTab === 'criteria_readiness'}
+          aria-controls="decision-panel-criteria_readiness"
+          tabIndex={subTab === 'criteria_readiness' ? 0 : -1}
           className={`tab-btn ${subTab === 'criteria_readiness' ? 'active' : ''}`}
           onClick={() => setSubTab('criteria_readiness')}
         >
           1. Kriteria &amp; Kesiapan Data
         </button>
         <button
+          id="decision-subtab-ahp_weights"
+          role="tab"
           type="button"
+          aria-selected={subTab === 'ahp_weights'}
+          aria-controls="decision-panel-ahp_weights"
+          tabIndex={subTab === 'ahp_weights' ? 0 : -1}
           className={`tab-btn ${subTab === 'ahp_weights' ? 'active' : ''}`}
           onClick={() => setSubTab('ahp_weights')}
         >
           2. Perbandingan AHP &amp; Versi Bobot
         </button>
         <button
+          id="decision-subtab-topsis_runs"
+          role="tab"
           type="button"
+          aria-selected={subTab === 'topsis_runs'}
+          aria-controls="decision-panel-topsis_runs"
+          tabIndex={subTab === 'topsis_runs' ? 0 : -1}
           className={`tab-btn ${subTab === 'topsis_runs' ? 'active' : ''}`}
           onClick={() => setSubTab('topsis_runs')}
         >
           3. Eksekusi &amp; Riwayat TOPSIS
         </button>
         <button
+          id="decision-subtab-run_verification"
+          role="tab"
           type="button"
+          aria-selected={subTab === 'run_verification'}
+          aria-controls="decision-panel-run_verification"
+          tabIndex={subTab === 'run_verification' ? 0 : -1}
           className={`tab-btn ${subTab === 'run_verification' ? 'active' : ''}`}
           onClick={() => setSubTab('run_verification')}
         >
@@ -399,7 +636,12 @@ export default function DecisionEnginePanel({
 
       {/* SUB-TAB 1: DAFTAR KRITERIA & LAPORAN KESIAPAN DATA */}
       {subTab === 'criteria_readiness' && (
-        <div>
+        <div
+          id="decision-panel-criteria_readiness"
+          role="tabpanel"
+          aria-labelledby="decision-subtab-criteria_readiness"
+          tabIndex="0"
+        >
           <h3>1.1 Daftar Kriteria Keputusan &amp; Atribut Benefit/Cost</h3>
           <p className="text-muted">
             Kriteria yang telah digunakan dalam versi bobot atau perhitungan historis bersifat{' '}
@@ -670,8 +912,20 @@ export default function DecisionEnginePanel({
 
       {/* SUB-TAB 2: PERBANDINGAN BERPASANGAN AHP & VERSI BOBOT */}
       {subTab === 'ahp_weights' && (
-        <div>
-          <h3>2.1 Daftar Versi Bobot Kriteria (AHP)</h3>
+        <div
+          id="decision-panel-ahp_weights"
+          role="tabpanel"
+          aria-labelledby="decision-subtab-ahp_weights"
+          tabIndex="0"
+        >
+          <div className="section-title-row">
+            <h3>2.1 Daftar Versi Bobot Kriteria (AHP)</h3>
+            {loadingDomain.weightVersions && (
+              <span className="loading-pill" aria-live="polite">
+                Memuat versi bobot…
+              </span>
+            )}
+          </div>
           {isExpertOrAdmin && (
             <form
               onSubmit={handleCreateDraftVersion}
@@ -862,8 +1116,11 @@ export default function DecisionEnginePanel({
                     <tbody>
                       {upperPairs.map(([critA, critB]) => {
                         const val = getPairValue(critA.id, critB.id)
+                        const pairKey = `${critA.id}_${critB.id}`
+                        const selectId = `pairwise-${critA.code.toLowerCase()}-${critB.code.toLowerCase()}`
+                        const ariaLabel = `Perbandingan tingkat kepentingan antara ${critA.code} (${critA.name}) terhadap ${critB.code} (${critB.name})`
                         return (
-                          <tr key={`${critA.id}_${critB.id}`}>
+                          <tr key={pairKey}>
                             <td>
                               <strong>
                                 {critA.code} — {critA.name}
@@ -871,11 +1128,14 @@ export default function DecisionEnginePanel({
                             </td>
                             <td>
                               <select
+                                id={selectId}
+                                name={pairKey}
+                                aria-label={ariaLabel}
                                 value={val}
                                 onChange={(e) =>
                                   setPairwiseValues((prev) => ({
                                     ...prev,
-                                    [`${critA.id}_${critB.id}`]: Number(e.target.value),
+                                    [pairKey]: Number(e.target.value),
                                   }))
                                 }
                               >
@@ -911,8 +1171,20 @@ export default function DecisionEnginePanel({
 
       {/* SUB-TAB 3: EKSEKUSI & RIWAYAT PERHITUNGAN TOPSIS */}
       {subTab === 'topsis_runs' && (
-        <div>
-          <h3>3.1 Form Eksekusi Perhitungan Prioritas TOPSIS</h3>
+        <div
+          id="decision-panel-topsis_runs"
+          role="tabpanel"
+          aria-labelledby="decision-subtab-topsis_runs"
+          tabIndex="0"
+        >
+          <div className="section-title-row">
+            <h3>3.1 Form Eksekusi Perhitungan Prioritas TOPSIS</h3>
+            {loadingDomain.decisionRuns && (
+              <span className="loading-pill" aria-live="polite">
+                Memuat riwayat TOPSIS…
+              </span>
+            )}
+          </div>
           <form onSubmit={handleExecuteTopsis} className="filter-grid" style={{ marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label htmlFor="run-name">Nama Eksekusi / Skenario Keputusan</label>
@@ -1033,7 +1305,12 @@ export default function DecisionEnginePanel({
 
       {/* SUB-TAB 4: RINCIAN PERHITUNGAN TOPSIS & PENJELASAN PERINGKAT */}
       {subTab === 'run_verification' && (
-        <div>
+        <div
+          id="decision-panel-run_verification"
+          role="tabpanel"
+          aria-labelledby="decision-subtab-run_verification"
+          tabIndex="0"
+        >
           {!selectedRunDetail ? (
             <div className="state-box">
               Pilih salah satu riwayat perhitungan pada tab{' '}
@@ -1267,8 +1544,18 @@ export default function DecisionEnginePanel({
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-activate-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !ahpBusy) {
+              setConfirmActivateVersion(null)
+            }
+          }}
         >
-          <div className="modal-card confirm-modal-box" style={{ maxWidth: '540px' }}>
+          <div
+            ref={confirmModalRef}
+            className="modal-card confirm-modal-box"
+            tabIndex="-1"
+            style={{ maxWidth: '540px' }}
+          >
             <div className="modal-header">
               <h3 id="confirm-activate-title">Konfirmasi Persetujuan &amp; Aktivasi Bobot AHP</h3>
               <button
@@ -1276,6 +1563,7 @@ export default function DecisionEnginePanel({
                 className="btn-secondary btn-sm"
                 disabled={ahpBusy}
                 onClick={() => setConfirmActivateVersion(null)}
+                aria-label="Tutup modal konfirmasi aktivasi"
               >
                 ✕
               </button>

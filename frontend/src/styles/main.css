@@ -365,11 +365,25 @@ button:focus-visible {
 .webgis-map-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem;
+  align-items: center;
+  gap: 1.25rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   background: #f8fafc;
   border-top: 1px solid var(--color-border);
+}
+
+.legend-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.legend-title {
+  font-weight: 700;
+  color: var(--color-foreground);
+  margin-right: 0.2rem;
 }
 
 .legend-dot {
@@ -387,6 +401,13 @@ button:focus-visible {
   background: #0284c7;
   vertical-align: middle;
   margin-right: 0.3rem;
+}
+
+.legend-line-demo {
+  background: transparent !important;
+  border-top: 2px dashed #d97706;
+  height: 0;
+  width: 16px;
 }
 
 .map-cluster-icon {
