@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Services\DecisionEngine\DecisionEngineException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -53,6 +54,17 @@ class Handler extends ExceptionHandler
                     'success' => false,
                     'message' => 'Validation failed',
                     'errors' => $e->errors(),
+                ], 422);
+            }
+
+            if ($e instanceof DecisionEngineException) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'error_code' => $e->errorCode(),
+                    'errors' => [
+                        'decision_engine' => [$e->getMessage()],
+                    ],
                 ], 422);
             }
 

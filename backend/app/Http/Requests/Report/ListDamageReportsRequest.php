@@ -45,3 +45,4 @@ class ListDamageReportsRequest extends FormRequest
         ];
     }
 }
+

@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Models\CriterionWeightVersion;
 use App\Models\DamageReport;
 use App\Models\DecisionCriterion;
+use App\Models\DecisionRun;
 use App\Models\User;
 use App\Policies\CriterionWeightVersionPolicy;
 use App\Policies\DamageReportPolicy;
 use App\Policies\DecisionCriterionPolicy;
+use App\Policies\DecisionRunPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
         DamageReport::class => DamageReportPolicy::class,
         DecisionCriterion::class => DecisionCriterionPolicy::class,
         CriterionWeightVersion::class => CriterionWeightVersionPolicy::class,
+        DecisionRun::class => DecisionRunPolicy::class,
     ];
 
     /**

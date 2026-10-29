@@ -43,3 +43,4 @@ class ListRoadSegmentsRequest extends FormRequest
         ];
     }
 }
+

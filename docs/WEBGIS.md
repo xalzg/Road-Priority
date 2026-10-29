@@ -47,3 +47,4 @@
 - **Mekanisme Pemeriksaan Batas Wilayah (`GeoGeometryService::evaluateStudyAreaLocation`):**
   1. Jika tabel `administrative_areas` telah memiliki rekaman dengan `is_study_area = true` dan geometri poligon terverifikasi (`boundary_geojson` bertipe `Polygon`/`MultiPolygon`), sistem menjalankan algoritma *ray-casting point-in-polygon* terhadap poligon resmi tersebut (`boundary_source = verified_polygon:{nama}`).
   2. Selama poligon batas kecamatan/kelurahan resmi dari BIG/pemerintah daerah belum dimuat ke database produksi (`GAP-02` / `D-02`), sistem menggunakan kotak pembatas referensi BSD/Tangerang (`min_lat: -6.38`, `max_lat: -6.22`, `min_lng: 106.58`, `max_lng: 106.75`) yang ditampilkan sebagai garis putus-putus biru di peta dan memberikan peringatan eksplisit (`study_area_check.warning`) apabila titik laporan berada di luar kotak referensi tersebut, tanpa mengklaim kotak referensi sebagai batas administratif resmi.
+

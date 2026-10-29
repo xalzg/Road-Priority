@@ -50,3 +50,4 @@
      - Tamu tanpa token menerima `401 Unauthorized`.
      - Pengguna lain yang bukan pemilik laporan dan bukan `officer`/`admin` menerima `403 Forbidden`.
      - Pemilik laporan, `officer`, dan `admin` aktif menerima stream gambar (`200 OK`) dengan header `X-Content-Type-Options: nosniff`.
+

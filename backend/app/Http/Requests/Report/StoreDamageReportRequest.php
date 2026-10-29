@@ -39,3 +39,4 @@ class StoreDamageReportRequest extends FormRequest
         ];
     }
 }
+

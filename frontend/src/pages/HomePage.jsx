@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import DecisionEnginePanel from '../components/DecisionEnginePanel'
 import ReportDetailModal from '../components/ReportDetailModal'
 import ReportForm from '../components/ReportForm'
 import WebGisMap from '../components/WebGisMap'
@@ -51,6 +52,8 @@ export default function HomePage() {
 
   const isOfficerOrAdmin =
     currentUser && (currentUser.role === 'officer' || currentUser.role === 'admin')
+  const canAccessDecisionEngine =
+    currentUser && ['officer', 'expert', 'admin'].includes(currentUser.role)
 
   const currentQueryKey = [
     activeTab,
@@ -66,7 +69,10 @@ export default function HomePage() {
     currentUser?.id || 'guest',
   ].join('|')
 
-  const loadingReports = activeTab !== 'create_report' && loadedQueryKey !== currentQueryKey
+  const loadingReports =
+    activeTab !== 'create_report' &&
+    activeTab !== 'decision_engine' &&
+    loadedQueryKey !== currentQueryKey
 
   // Sinkronisasi sesi saat aplikasi dibuka
   useEffect(() => {
@@ -99,7 +105,7 @@ export default function HomePage() {
 
   // Muat daftar laporan sesuai tab aktif, filter, bbox, dan halaman
   useEffect(() => {
-    if (activeTab === 'create_report') return undefined
+    if (activeTab === 'create_report' || activeTab === 'decision_engine') return undefined
 
     const controller = new AbortController()
 
@@ -192,7 +198,12 @@ export default function HomePage() {
   const handleLogout = async () => {
     await logoutUser()
     setCurrentUser(null)
-    if (activeTab === 'create_report' || activeTab === 'my_reports' || activeTab === 'officer_queue') {
+    if (
+      activeTab === 'create_report' ||
+      activeTab === 'my_reports' ||
+      activeTab === 'officer_queue' ||
+      activeTab === 'decision_engine'
+    ) {
       setActiveTab('public_map')
     }
     setRefreshTick((n) => n + 1)
@@ -247,6 +258,16 @@ export default function HomePage() {
               onClick={() => switchTab('officer_queue')}
             >
               Antrean Verifikasi Petugas
+            </button>
+          )}
+
+          {canAccessDecisionEngine && (
+            <button
+              type="button"
+              className={`tab-btn ${activeTab === 'decision_engine' ? 'active' : ''}`}
+              onClick={() => switchTab('decision_engine')}
+            >
+              Prioritas AHP-TOPSIS
             </button>
           )}
         </div>
@@ -327,8 +348,13 @@ export default function HomePage() {
         />
       )}
 
+      {/* Tab Mesin Pendukung Keputusan AHP-TOPSIS (PRD 05) */}
+      {activeTab === 'decision_engine' && canAccessDecisionEngine && (
+        <DecisionEnginePanel currentUser={currentUser} roadSegments={roadSegments} />
+      )}
+
       {/* Tab Peta Publik / Laporan Saya / Antrean Petugas */}
-      {activeTab !== 'create_report' && (
+      {activeTab !== 'create_report' && activeTab !== 'decision_engine' && (
         <>
           {/* Bar Filter */}
           <section className="panel-card filter-bar" aria-label="Filter laporan kerusakan">

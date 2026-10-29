@@ -381,3 +381,4 @@ export default function ReportForm({ roadSegments = [], onCreated }) {
     </section>
   )
 }
+

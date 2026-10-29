@@ -57,3 +57,4 @@ return [
     'duplicate_candidate_radius_m' => 50.0,
     'duplicate_candidate_window_days' => 30,
 ];
+

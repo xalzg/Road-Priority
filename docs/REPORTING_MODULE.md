@@ -99,3 +99,4 @@ Saat petugas (`officer` atau `admin`) membuka detail laporan (`GET /api/reports/
 1. **`suggested_segments`:** Daftar segmen jalan aktif dalam radius $\le 50\text{ m}$ beserta jarak titik-ke-garis (`distance_meters`) untuk membantu petugas memilih segmen jalan secara akurat.
 2. **`nearby_duplicate_candidates`:** Daftar laporan lain dalam radius $\le 50\text{ m}$ dan rentang waktu $\pm 30\text{ hari}$ untuk membantu pemeriksaan duplikat secara manual (sistem tidak pernah menandai duplikat secara otomatis hanya karena berdekatan).
 3. **`study_area_check`:** Status apakah koordinat berada di dalam poligon/kotak referensi wilayah studi BSD/Tangerang.
+

@@ -209,22 +209,55 @@
 
 ---
 
-### 3.8 `GET /api/criteria` (`planned`)
-- **Tujuan:** Mengambil daftar kriteria keputusan (`decision_criteria`).
-- **Autentikasi:** `auth:sanctum` (semua peran terautentikasi).
-- **Respons Sukses `200 OK`:** daftar kriteria beserta `code`, `name`, `description`, `data_type`, `unit`, `criterion_type` (`benefit`/`cost`), `minimum_value`, `maximum_value`, `aggregation_rule`, `is_required`, `is_active`.
+### 3.8 `GET /api/criteria`, `POST /api/criteria`, & `PATCH /api/criteria/{decisionCriterion}` (`implemented`)
+- **Tujuan:** Mengambil, membuat, atau memperbarui konfigurasi kriteria keputusan (`decision_criteria`).
+- **Autentikasi:** `auth:sanctum` (`GET`: `officer`, `expert`, `admin`; `POST` & `PATCH`: `admin`).
+- **Aturan Immutability Historis (`PATCH /api/criteria/{decisionCriterion}`):**
+  - Jika kriteria telah direferensikan pada `criterion_weight_items` atau `ahp_pairwise_comparisons`, perubahan pada atribut semantik (`code`, `criterion_type`, `data_type`, `minimum_value`, `maximum_value`) ditolak dengan **`409 Conflict`** (`error_code: "HISTORICAL_CRITERION_IMMUTABLE"`). Perubahan metadata non-semantik (`description`, `is_active`) diizinkan dan dicatat ke `audit_logs`.
 
 ---
 
-### 3.9 `GET /api/criterion-weight-versions` (`planned`)
-- **Tujuan:** Mengambil daftar versi bobot AHP (`criterion_weight_versions`) beserta rincian bobot per kriteria (`criterion_weight_items`) dan indikator konsistensi ($\lambda_{\max}$, `consistency_index`, `consistency_ratio`, `is_consistent`).
-- **Autentikasi:** `auth:sanctum` (peran `officer`, `expert`, `admin`).
+### 3.9 `GET /api/assessments` & `POST /api/assessments` (`implemented`)
+- **Tujuan:** Mencatat dan menampilkan hasil penilaian kondisi fisik ruas jalan di lapangan (`damage_assessments`).
+- **Autentikasi:** `auth:sanctum` (`GET`: `officer`, `expert`, `admin`; `POST`: `officer`, `admin`).
+- **Request Body (`POST /api/assessments`):**
+  ```json
+  {
+    "road_segment_id": 1,
+    "severity_level": 4,
+    "safety_risk_score": 3,
+    "road_function_score": 3,
+    "impact_score": 3,
+    "status": "final",
+    "assessment_source": "field_inspection"
+  }
+  ```
 
 ---
 
-### 3.10 `POST /api/decision-runs` (`planned`)
+### 3.10 `GET /api/criterion-weight-versions`, `GET /api/criterion-weight-versions/{id}`, `POST /api/criterion-weight-versions`, `POST /api/criterion-weight-versions/{id}/calculate`, & `POST /api/criterion-weight-versions/{id}/activate` (`implemented`)
+- **Tujuan:** Mengelola siklus hidup versi bobot AHP (`draft` $\to$ `computed` $\to$ `approved`).
+- **Autentikasi & Otorisasi:**
+  - `GET`: `officer`, `expert`, `admin`
+  - `POST /api/criterion-weight-versions` (buat draft) & `POST /api/criterion-weight-versions/{id}/calculate` (hitung AHP): `expert`, `admin`
+  - `POST /api/criterion-weight-versions/{id}/activate` (setujui & aktifkan): `admin`
+- **Aturan Bisnis & Validasi:**
+  - `calculate` menerima `comparisons` berisi pasangan `{criterion_a_id, criterion_b_id, comparison_value, expert_id?}` pada skala Saaty $1\text{–}9$ atau resiprokalnya, menghitung eigenvector utama, $\lambda_{\max}$, $CI$, dan $CR$.
+  - Versi bobot yang sudah berstatus `approved` atau pernah dipakai pada `decision_runs` bersifat **immutable** (`409 Conflict` jika dihitung ulang).
+  - `activate` menolak versi bobot dengan $CR > 0{,}10$ (`422 Unprocessable Entity`, `error_code: "weight_version_inconsistent"`).
+
+---
+
+### 3.11 `GET /api/decision-data-readiness` (`implemented`)
+- **Tujuan:** Menghasilkan laporan kesiapan data alternatif ruas jalan sebelum perhitungan TOPSIS dijalankan (PRD 05 §2 & §7).
+- **Autentikasi:** `auth:sanctum` (`officer`, `expert`, `admin`).
+- **Respons Sukses `200 OK`:** memuat `missing_data_policy`, `criteria`, `summary` (`active_criteria_count`, `total_active_segments`, `eligible_segments_count`, `incomplete_segments_count`, `ready_for_topsis_run`), `eligible_segments`, dan `incomplete_segments` beserta kode alasan (`missing_or_invalid:{code}` / `out_of_range:{code}`).
+
+---
+
+### 3.12 `POST /api/decision-runs` (`implemented`)
 - **Tujuan:** Menjalankan satu eksekusi perhitungan prioritas AHP-TOPSIS dan menyimpan snapshot lengkapnya.
-- **Autentikasi:** `auth:sanctum` (peran `admin`, atau `officer` bila diberi izin).
+- **Autentikasi:** `auth:sanctum` (peran `officer`, `expert`, `admin`).
 - **Request Body (`application/json`):**
   ```json
   {
@@ -241,15 +274,15 @@
   - Minimal 2 ruas jalan memenuhi syarat kelayakan; jika kurang, kembalikan `422 Unprocessable Entity` (`insufficient_alternatives`).
 - **Efek Samping & Transaksi Database:**
   - Berjalan dalam `DB::transaction()`:
-    1. Mengeksekusi `SnapshotService::createSnapshot()`.
+    1. Mengeksekusi `SnapshotService::createSnapshot()` dan `SensitivityService::analyze()`.
     2. Menyimpan rekaman induk ke `decision_runs` (termasuk `input_hash` SHA-256 dan `input_snapshot_reference`).
     3. Menyimpan seluruh ruas (baik yang masuk peringkat maupun yang dikeluarkan beserta `exclusion_reason`) ke `decision_run_items`.
     4. Mencatat aksi ke `audit_logs`.
 
 ---
 
-### 3.11 `GET /api/decision-runs` & `GET /api/decision-runs/{id}` (`planned`)
+### 3.13 `GET /api/decision-runs` & `GET /api/decision-runs/{id}` (`implemented`)
 - **Tujuan:**
-  - `GET /api/decision-runs`: daftar riwayat eksekusi keputusan berpaginasi.
-  - `GET /api/decision-runs/{id}`: detail lengkap satu decision run yang dibaca langsung dari snapshot (`decision_runs` + `decision_run_items`), mencakup peringkat, nilai mentah, nilai ternormalisasi, nilai terbobot, $A^+$, $A^-$, $D^+$, $D^-$, $C_i$, `largest_driving_criterion`, daftar ruas yang dikecualikan beserta alasan, `input_hash`, dan teks `disclaimer` wajib.
+  - `GET /api/decision-runs`: daftar riwayat eksekusi keputusan.
+  - `GET /api/decision-runs/{id}`: detail lengkap satu decision run yang dibaca langsung dari snapshot (`decision_runs` + `decision_run_items`) sekaligus memverifikasi ulang reproduktibilitas melalui `SnapshotService::reproduce()` (`reproducibility_verified = true`), mencakup peringkat, nilai mentah ($X$), nilai ternormalisasi ($R$), nilai terbobot ($V$), $A^+$, $A^-$, $D^+$, $D^-$, $C_i$, `largest_driving_criterion`, `sensitivity_summary`, daftar ruas yang dikecualikan beserta alasan, `input_hash`, dan teks `disclaimer` wajib.
 - **Autentikasi:** `auth:sanctum` (peran `officer`, `expert`, `admin`).

@@ -9,17 +9,26 @@ class CriterionWeightVersionPolicy
 {
     public function viewAny(User $actor): bool
     {
-        return $actor->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
+        return $actor->is_active && $actor->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
+    }
+
+    public function view(User $actor, CriterionWeightVersion $version): bool
+    {
+        return $actor->is_active && $actor->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
     }
 
     public function create(User $actor): bool
     {
-        return $actor->isAdmin();
+        return $actor->is_active && $actor->hasRole(User::ROLE_EXPERT, User::ROLE_ADMIN);
+    }
+
+    public function calculate(User $actor, CriterionWeightVersion $version): bool
+    {
+        return $actor->is_active && $actor->hasRole(User::ROLE_EXPERT, User::ROLE_ADMIN);
     }
 
     public function approve(User $actor, CriterionWeightVersion $version): bool
     {
-        return $actor->isAdmin();
+        return $actor->is_active && $actor->isAdmin();
     }
 }
-

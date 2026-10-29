@@ -155,3 +155,4 @@ export async function fetchAuthorizedPhotoObjectUrl(photoUrl, { signal } = {}) {
   const blob = await response.blob()
   return URL.createObjectURL(blob)
 }
+
