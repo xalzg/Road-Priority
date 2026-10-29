@@ -29,3 +29,4 @@ Respons `200 OK`:
 ```
 
 Implementasi: `backend/app/Http/Controllers/Api/HealthController.php`. Tes: `backend/tests/Feature/HealthEndpointTest.php`.
+

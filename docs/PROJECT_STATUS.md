@@ -2,7 +2,7 @@
 Diperbarui: 2026-10-29 19:04 WIB oleh agen (Antigravity)
 
 ## Tahap aktif
-PRD 01 (Foundation & Project Bootstrap). Status: **menunggu persetujuan pengguna**. Acceptance criteria sudah diperiksa (lihat bawah).
+PRD 01 (Foundation & Project Bootstrap). Status: **selesai dan disetujui pengguna** (2026-10-29 19:06). Acceptance criteria sudah diperiksa (lihat bawah). PRD 02 belum dimulai.
 
 ## Status instalasi
 | Komponen | Status |
@@ -65,10 +65,11 @@ URL: backend http://127.0.0.1:8000 · frontend http://127.0.0.1:5173 (alamat Vit
 4. Konfigurasi `git user.name`/`user.email` global dipakai apa adanya (Grac / xalzstudent@gmail.com): periksa bahwa itu identitas yang Anda inginkan.
 
 ## Keputusan teknis yang telah dibuat
-Lihat [DECISIONS.md](DECISIONS.md): DEC-001 sampai DEC-006. Keputusan penelitian D-01 sampai D-12 belum dibahas.
+Lihat [DECISIONS.md](DECISIONS.md): DEC-001 sampai DEC-007, semuanya disetujui. D-01 sampai D-04 disetujui hanya pada arah umum (DEC-007); nilai konkretnya belum ditetapkan. D-05 sampai D-12 belum dibahas.
 
 ## Langkah berikutnya yang disarankan
-1. Tinjau dan setujui PRD 01.
-2. Putuskan DEC-002 (tetap Laravel 9 atau upgrade PHP) dan DEC-006 (lokasi proyek) sebelum PRD 02.
+1. ~~Setujui PRD 01, DEC-002, DEC-006~~ (selesai).
+2. Audit sumber data (batas wilayah, geometri ruas, lisensi) untuk menetapkan nilai konkret D-01 sampai D-04. Belum dikerjakan.
 3. Mulai jalur non-kode dari Master PRD §16: rekrut pakar AHP, rencana survei lapangan, status lisensi data geometri jalan.
 4. PRD 02 (arsitektur, database, kontrak API) setelah persetujuan; keputusan D-01 sampai D-04 perlu disetujui dulu.
+

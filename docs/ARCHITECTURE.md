@@ -36,3 +36,4 @@ Proxy Vite  --->  Laravel API (php artisan serve :8000)
 - Laravel menjadi sumber kebenaran aturan bisnis dan perhitungan; React tidak menghitung ulang AHP-TOPSIS.
 - Modul berkomunikasi lewat kontrak API terdokumentasi ([API_CONTRACT.md](API_CONTRACT.md)).
 - Belum ada tabel domain; skema database dirancang pada PRD 02.
+
