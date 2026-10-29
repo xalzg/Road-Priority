@@ -1,52 +1,55 @@
 # PROJECT_STATUS — RoadPriority
 
-Diperbarui: 2026-10-29 19:38 WIB oleh sesi agen (Antigravity)
+Diperbarui: 2026-10-29 19:55 WIB oleh sesi agen (Antigravity)
 
 ## Tahap aktif
 
 - **PRD 01 (Foundation & Project Bootstrap + Audit Sumber Data):** **selesai dan disetujui**.
-- **PRD 02 (Database Design & API Contract):** **selesai diimplementasikan dan diverifikasi** pada cabang `prd-02-database-and-api` (menunggu persetujuan penutupan tahap dari pengguna sebelum mulai PRD 03).
+- **PRD 02 (Database Design & API Contract):** **selesai dan terverifikasi** (`prd-02-database-and-api`).
+- **PRD 03 (Backend API, Authentication & Access Control):** **selesai diimplementasikan dan diverifikasi** pada cabang `prd-03-backend-auth-rbac` (menunggu persetujuan penutupan tahap dari pengguna).
 - **PRD 05 (Mesin Keputusan Inti AHP-TOPSIS — Pure Service Layer):** **selesai diimplementasikan dan teruji unit** (`80` unit test mesin keputusan lulus).
 
 ## Ringkasan kondisi
 
-1. **Database & Skema (PRD 02):** 12 berkas migration baru (total 16 migration bersama bawaan Laravel) membentuk 14 tabel inti (`users`, `administrative_areas`, `road_segments`, `damage_reports`, `report_photos`, `report_status_histories`, `damage_assessments`, `decision_criteria`, `criterion_weight_versions`, `criterion_weight_items`, `ahp_pairwise_comparisons`, `decision_runs`, `decision_run_items`, `audit_logs`).
-2. **Model Eloquent & Integritas:** 14 model Eloquent dengan proteksi *mass assignment*, relasi lengkap, validasi domain (`DamageAssessment` wajib memiliki segmen atau laporan), serta aturan foreign key yang melindungi histori (`RESTRICT` untuk induk histori/keputusan, `SET NULL` untuk aktor `users`).
-3. **Database Pengujian Terpisah:** `backend/phpunit.xml` menggunakan database khusus **`roadpriority_test`**, sehingga pengujian otomatis (`RefreshDatabase`) tidak pernah menghapus atau mengubah isi database development **`roadpriority`**.
-4. **Kontrak API & Endpoint Health:** `docs/API_CONTRACT.md`, `docs/ERD.md`, `docs/DATABASE_SCHEMA.md`, dan `docs/DATA_DICTIONARY.md` telah selaras penuh. Endpoint `GET /api/health` tetap aktif dan lulus uji.
+1. **Autentikasi Sanctum & Keamanan Sesi (PRD 03):** `POST /api/login` (`throttle:login` 5 percobaan/menit per `email|ip`), `POST /api/logout`, dan `GET /api/me` diimplementasikan dengan Laravel Sanctum Personal Access Tokens bermasa berlaku terbatas (`SANCTUM_TOKEN_EXPIRATION_MINUTES=480`), pencabutan token otomatis saat logout maupun saat akun dinonaktifkan (`EnsureActiveUser`), serta konfigurasi CORS terbatas (`CORS_ALLOWED_ORIGINS`).
+2. **Kontrol Akses Berbasis Role & Kepemilikan (RBAC + Anti-IDOR):** 4 peran (`reporter`, `officer`, `expert`, `admin`) ditegakkan melalui middleware (`active.user`, `role`) dan Laravel Policies (`UserPolicy`, `DamageReportPolicy`, `DecisionCriterionPolicy`, `CriterionWeightVersionPolicy`). Pelapor tidak dapat melihat laporan belum terverifikasi milik pelapor lain (`403`) dan tidak dapat memverifikasi laporannya sendiri (`403`). Identitas pelapor (`reporter_id`) disensor untuk pengakses non-pemilik di luar `officer`/`admin`.
+3. **Service Layer, Transaksi Atomik & Proteksi Admin Terakhir:** `UserAccountService`, `ReportStatusService`, dan `AuditLogService` membungkus operasi multi-tabel di dalam `DB::transaction()`. `UserAccountService` menggunakan `lockForUpdate()` untuk mencegah penonaktifan atau penurunan role akun `admin` aktif terakhir (`409 Conflict`).
+4. **Penanganan Error Konsisten & Audit Log Tersanitasi:** `app/Exceptions/Handler.php` mengembalikan amplop JSON konsisten (`401`, `403`, `404`, `409`, `422`, `429`, `500`) tanpa pernah membocorkan stack trace, SQL query, atau path file internal. `AuditLogService` secara otomatis menghapus kunci rahasia (`password`, `token`, dll.) sebelum menyimpan ke `audit_logs`.
 
 ## Hasil build dan tes terakhir
 
 | Perintah | Hasil | Tanggal |
 |---|---|---|
-| `php artisan migrate` (pada `roadpriority`) | 16 migration berstatus `Ran` (4 bawaan + 12 migration PRD 02) | 2026-10-29 19:31 WIB |
-| `php artisan migrate:rollback --step=12 && php artisan migrate` | Rollback dan re-migrate 12 migration PRD 02 berhasil tanpa error | 2026-10-29 19:31 WIB |
-| `php artisan test` (pada `roadpriority_test`) | **`88 passed` (0 failed)** dalam `2.40s` (`DatabaseSchemaIntegrityTest`, `HealthEndpointTest`, `AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `ExampleTest`) | 2026-10-29 19:35 WIB |
+| `php artisan test` (pada `roadpriority_test`) | **`104 passed` (0 failed)** dalam `3.26s` (`AuthAndAccessControlTest` 16 tes, `DatabaseSchemaIntegrityTest` 8 tes, `HealthEndpointTest` 2 tes, `AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `ExampleTest`) | 2026-10-29 19:52 WIB |
+| `php artisan route:list --path=api` | 12 rute API terdaftar (`api/health`, `api/login`, `api/logout`, `api/me`, `api/users`, `api/audit-logs`, `api/reports/{damageReport}`, `api/reports/{damageReport}/status`, `api/criteria`) | 2026-10-29 19:51 WIB |
 | `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` | 2026-10-29 19:24 WIB |
 | `npm run build` (`frontend/`) | `built in 151ms` | 2026-10-29 19:03 WIB |
 
-## Requirement dan acceptance criteria PRD 02
+## Requirement dan acceptance criteria PRD 03
 
-| Kriteria (PRD 02 §13) | Status | Bukti |
+| Kriteria (PRD 03 §14) | Status | Bukti |
 |---|---|---|
-| ERD sesuai dengan model data aktual | **Terpenuhi** | [`docs/ERD.md`](ERD.md) |
-| Seluruh entitas inti memiliki definisi kolom dan relasi | **Terpenuhi** | [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md), [`docs/DATA_DICTIONARY.md`](DATA_DICTIONARY.md), 14 model di `backend/app/Models/` |
-| Migration dapat dijalankan pada database pengujian kosong | **Terpenuhi** | `DatabaseSchemaIntegrityTest::test_test_suite_uses_dedicated_test_database_and_migrates_all_tables` (`roadpriority_test`) |
-| Foreign key, unique index, dan nullable field telah diverifikasi | **Terpenuhi** | `DatabaseSchemaIntegrityTest` (8 skenario integritas skema lulus) |
-| Model Eloquent memiliki relasi yang sesuai | **Terpenuhi** | `DatabaseSchemaIntegrityTest::test_nullable_fields_and_core_eloquent_relationships_work` & `test_decision_run_links_to_weight_version_and_enforces_unique_segment_and_rank` |
-| API contract mendokumentasikan endpoint dan format respons | **Terpenuhi** | [`docs/API_CONTRACT.md`](API_CONTRACT.md) |
-| Keputusan geospasial telah ditetapkan dan didokumentasikan | **Terpenuhi** | `DEC-008` & `DEC-010` di [`docs/DECISIONS.md`](DECISIONS.md) serta [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md) §1.2 |
-| Data histori keputusan dapat ditelusuri ke versi bobot dan snapshot input | **Terpenuhi** | `DecisionRun`, `DecisionRunItem`, `CriterionWeightVersion`, `SnapshotServiceTest`, dan `DatabaseSchemaIntegrityTest` |
-| Endpoint health tetap bekerja | **Terpenuhi** | `HealthEndpointTest` (2 tes lulus) |
-| Tidak ada controller palsu atau data fiktif yang disajikan sebagai implementasi nyata | **Terpenuhi** | Hanya `HealthController` yang ada di `app/Http/Controllers/Api/`; data seeder contoh berada di `DemoSimulationSeeder` dengan label eksplisit `is_demo = true` dan `data_origin = 'demo'` |
-| Test report dan `PROJECT_STATUS.md` diperbarui | **Terpenuhi** | Dokumen ini |
+| Login, logout, dan profil pengguna bekerja | **Terpenuhi** | `AuthController` + `AuthAndAccessControlTest` (`login`, `logout`, `me`) |
+| Password tersimpan sebagai hash dan tidak pernah muncul pada respons API | **Terpenuhi** | `Hash::make()`, `User::$hidden`, `UserResource`, `AuthAndAccessControlTest` |
+| Role dan permission berjalan di server | **Terpenuhi** | `EnsureUserHasRole`, `EnsureActiveUser`, `UserPolicy`, `DamageReportPolicy`, `DecisionCriterionPolicy`, `CriterionWeightVersionPolicy` |
+| Endpoint terproteksi menolak akses tanpa autentikasi atau tanpa hak akses | **Terpenuhi** | `AuthAndAccessControlTest::test_private_endpoints_reject_unauthenticated_requests_with_401` & `test_role_authorization_matrix_for_admin_user_and_criteria_endpoints` |
+| Kepemilikan resource diperiksa untuk mencegah IDOR | **Terpenuhi** | `DamageReportPolicy::view` + `AuthAndAccessControlTest::test_idor_prevention_and_reporter_privacy_on_damage_reports` |
+| Validasi request mengembalikan `422` dengan format error konsisten | **Terpenuhi** | Form Requests (`LoginRequest`, `StoreUserRequest`, `UpdateUserRequest`, `UpdateReportStatusRequest`, `StoreDecisionCriterionRequest`) + `Handler.php` |
+| Error handler tidak membocorkan informasi sensitif | **Terpenuhi** | `AuthAndAccessControlTest::test_api_exception_handler_never_leaks_stack_trace_or_sql_details_on_unexpected_errors` |
+| Service layer dan transaksi database digunakan untuk operasi multi-tabel | **Terpenuhi** | `UserAccountService`, `ReportStatusService`, `DecisionCriterionController::store` + uji rollback `test_multi_table_status_transition_rolls_back_completely_if_audit_step_throws` |
+| Audit log mencatat aksi sensitif tanpa menyimpan rahasia | **Terpenuhi** | `AuditLogService` + `test_login_fails_with_wrong_password_and_redacts_secret_in_audit_log` |
+| Pengujian autentikasi, otorisasi, dan validasi lulus pada database pengujian terpisah | **Terpenuhi** | `104 passed` pada database `roadpriority_test` |
+| Dokumentasi dan `PROJECT_STATUS.md` telah diperbarui | **Terpenuhi** | [`docs/AUTHENTICATION.md`](AUTHENTICATION.md), [`docs/ACCESS_CONTROL.md`](ACCESS_CONTROL.md), [`docs/API_CONTRACT.md`](API_CONTRACT.md), [`docs/DECISIONS.md`](DECISIONS.md), dan dokumen ini |
 
-## Perubahan database dan endpoint terakhir
+## Perubahan backend dan endpoint terakhir (PRD 03)
 
-- **Migration baru (`backend/database/migrations/`):** `2026_10_29_000001` s.d. `2026_10_29_000012` (12 berkas migration).
-- **Model Eloquent (`backend/app/Models/`):** `User`, `AdministrativeArea`, `RoadSegment`, `DamageReport`, `ReportPhoto`, `ReportStatusHistory`, `DamageAssessment`, `DecisionCriterion`, `CriterionWeightVersion`, `CriterionWeightItem`, `AhpPairwiseComparison`, `DecisionRun`, `DecisionRunItem`, `AuditLog`.
-- **Seeder (`backend/database/seeders/`):** `CandidateCriteriaSeeder`, `DemoSimulationSeeder`.
-- **Endpoint aktif:** `GET /api/health` (endpoint lain di `docs/API_CONTRACT.md` berstatus `planned` untuk PRD 03–06).
+- **Middleware (`backend/app/Http/Middleware/`):** `EnsureActiveUser.php` (`active.user`), `EnsureUserHasRole.php` (`role`).
+- **Policies (`backend/app/Policies/`):** `UserPolicy.php`, `DamageReportPolicy.php`, `DecisionCriterionPolicy.php`, `CriterionWeightVersionPolicy.php`.
+- **Form Requests (`backend/app/Http/Requests/`):** `Auth/LoginRequest.php`, `User/StoreUserRequest.php`, `User/UpdateUserRequest.php`, `Report/UpdateReportStatusRequest.php`, `Criterion/StoreDecisionCriterionRequest.php`.
+- **Services (`backend/app/Services/`):** `AuditLogService.php`, `UserAccountService.php`, `ReportStatusService.php`.
+- **Controllers & Resources (`backend/app/Http/`):** `Controllers/Api/AuthController.php`, `Controllers/Api/UserController.php`, `Controllers/Api/AuditLogController.php`, `Controllers/Api/ReportAccessController.php`, `Controllers/Api/DecisionCriterionController.php`, `Resources/UserResource.php`.
+- **Seeder Admin Lokal (`backend/database/seeders/`):** `LocalAdminSeeder.php`.
+- **Feature Tests (`backend/tests/Feature/`):** `AuthAndAccessControlTest.php` (16 skenario keamanan & fungsionalitas).
 
 ## Issue terbuka
 
@@ -57,9 +60,9 @@ Diperbarui: 2026-10-29 19:38 WIB oleh sesi agen (Antigravity)
 
 ## Keputusan menunggu persetujuan
 
-- Konfirmasi nilai spesifik untuk **D-02** (daftar kecamatan/kelurahan wilayah studi BSD), **D-05** (kebijakan verifikasi email & rate limit pelapor untuk PRD 03), dan **D-06** (pilihan perlakuan kriteria K4). Lihat [`docs/DECISIONS.md`](DECISIONS.md) §2.
+- Konfirmasi nilai spesifik untuk **D-02** (daftar kecamatan/kelurahan wilayah studi BSD) dan **D-06** (pilihan perlakuan kriteria K4). Lihat [`docs/DECISIONS.md`](DECISIONS.md) §2.
 
 ## Langkah berikutnya yang disarankan
 
-1. Setujui penutupan **PRD 02**.
-2. Lanjutkan ke **PRD 03 — Backend, Autentikasi, dan Hak Akses** (implementasi autentikasi Sanctum, Policy per peran `reporter`/`officer`/`expert`/`admin`, Form Request validation, handler format error konsisten, audit logger service, rate limiting, serta matriks feature test peran $\times$ endpoint dan uji IDOR).
+1. Setujui penutupan **PRD 03**.
+2. Lanjutkan ke **PRD 04 — Pelaporan Kerusakan, Verifikasi, dan Penilaian Kondisi Lapangan** (pengiriman laporan masyarakat beserta validasi foto, pencocokan segmen jalan terdekat dalam meter, alur antrean verifikasi petugas, deteksi kandidat laporan duplikat, dan pencatatan penilaian kondisi lapangan `damage_assessments`).

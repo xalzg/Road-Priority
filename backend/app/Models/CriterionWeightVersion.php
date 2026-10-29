@@ -64,3 +64,4 @@ class CriterionWeightVersion extends Model
         return $this->hasMany(DecisionRun::class, 'criterion_weight_version_id');
     }
 }
+

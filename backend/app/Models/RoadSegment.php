@@ -71,3 +71,4 @@ class RoadSegment extends Model
         return $this->hasMany(DecisionRunItem::class, 'road_segment_id');
     }
 }
+

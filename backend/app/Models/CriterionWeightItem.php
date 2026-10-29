@@ -30,3 +30,4 @@ class CriterionWeightItem extends Model
         return $this->belongsTo(DecisionCriterion::class, 'decision_criterion_id');
     }
 }
+

@@ -1,6 +1,6 @@
 # Kontrak API (`API_CONTRACT.md`)
 
-**Tahap:** PRD 02 — Database Design & API Contract  
+**Tahap:** PRD 02 & PRD 03 — Database Design, API Contract, Authentication & Access Control  
 **Format pertukaran:** JSON (`Content-Type: application/json`, kecuali upload multipart pada `POST /api/reports`)  
 **Format waktu:** ISO 8601 (`YYYY-MM-DDTHH:mm:ssZ`, disimpan dalam UTC, ditampilkan Asia/Jakarta di UI)  
 **Sistem koordinat:** WGS 84 (EPSG:4326) — field objek memakai `latitude` ($[-90, 90]$) dan `longitude` ($[-180, 180]$); koordinat di dalam objek GeoJSON memakai urutan **`[longitude, latitude]`**.
@@ -14,62 +14,57 @@
 {
   "success": true,
   "message": "Request successful",
-  "data": {},
-  "meta": {
-    "current_page": 1,
-    "per_page": 20,
-    "total": 100,
-    "last_page": 5
-  }
+  "data": {}
 }
 ```
-*(Objek `meta` disertakan pada endpoint daftar berpaginasi).*
+*(Untuk daftar berpaginasi, `data` berisi `items` dan `meta: { current_page, per_page, total, last_page }`).*
 
-### 1.2 Respons Error Konsisten
+### 1.2 Respons Error Konsisten (`app/Exceptions/Handler.php`)
 ```json
 {
   "success": false,
-  "message": "Data yang dikirim tidak valid.",
-  "error": {
-    "code": "validation_error",
-    "details": {
-      "latitude": ["Latitude harus berada di antara -90 dan 90."]
-    }
+  "message": "Validation failed",
+  "errors": {
+    "latitude": [
+      "The latitude must be between -90 and 90."
+    ]
   }
 }
 ```
 
-| Kode HTTP | `error.code` | Makna |
-|---|---|---|
-| `200 OK` / `201 Created` | - | Permintaan berhasil diproses / resource berhasil dibuat |
-| `401 Unauthorized` | `unauthenticated` | Belum login atau token Sanctum tidak valid |
-| `403 Forbidden` | `forbidden` | Peran pengguna tidak memiliki izin (Policy menolak akses) |
-| `404 Not Found` | `not_found` | Resource tidak ditemukan |
-| `409 Conflict` | `invalid_state_transition` | Transisi status laporan melanggar state machine atau versi bobot sudah immutable |
-| `422 Unprocessable Entity` | `validation_error` | Validasi input gagal atau aturan kelayakan bisnis tidak terpenuhi |
-| `429 Too Many Requests` | `rate_limit_exceeded` | Melebihi batas throttle |
-| `500 Internal Server Error` | `server_error` | Kesalahan server (tanpa membocorkan stack trace / `.env`) |
+| Kode HTTP | Makna |
+|---|---|
+| `200 OK` / `201 Created` | Permintaan berhasil diproses / resource berhasil dibuat |
+| `401 Unauthorized` | Belum login, kredensial salah, atau token Sanctum tidak valid |
+| `403 Forbidden` | Akun nonaktif atau peran pengguna tidak memiliki izin (Middleware/Policy menolak akses) |
+| `404 Not Found` | Resource tidak ditemukan |
+| `409 Conflict` | Transisi status laporan melanggar state machine atau percobaan menonaktifkan/menurunkan role Admin aktif terakhir |
+| `422 Unprocessable Entity` | Validasi input gagal (`errors` berisi daftar pesan per field) |
+| `429 Too Many Requests` | Melebihi batas rate limiter (`throttle:login` atau `throttle:api`) |
+| `500 Internal Server Error` | Kesalahan server terstandar (`errors: null`, tanpa membocorkan stack trace, SQL query, atau path file) |
 
 ---
 
 ## 2. Ringkasan Status Endpoint
 
-> Sesuai PRD 02 §8: hanya `GET /api/health` yang aktif pada tahap ini. Endpoint lainnya berstatus **`planned`** untuk diimplementasikan pada PRD 03–06 dan sengaja tidak dibuat sebagai controller palsu.
-
 | Metode | Path | Akses / Peran | Status | Target Tahap |
 |---|---|---|---|---|
 | `GET` | `/api/health` | Publik | **`implemented`** | PRD 01 |
-| `POST` | `/api/auth/register` | Tamu (throttle) | `planned` | PRD 03 |
-| `POST` | `/api/auth/login` | Tamu (throttle) | `planned` | PRD 03 |
-| `POST` | `/api/auth/logout` | Login (`auth:sanctum`) | `planned` | PRD 03 |
-| `GET` | `/api/me` | Login (`auth:sanctum`) | `planned` | PRD 03 |
+| `POST` | `/api/login` | Tamu (`throttle:login`) | **`implemented`** | PRD 03 |
+| `POST` | `/api/logout` | Login (`auth:sanctum`, `active.user`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/me` | Login (`auth:sanctum`, `active.user`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/users` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
+| `POST` | `/api/users` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
+| `PATCH` | `/api/users/{user}` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/audit-logs` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/reports/{damageReport}` | Pemilik / Petugas / Admin (atau `verified` tanpa identitas pelapor) | **`implemented`** | PRD 03 |
+| `PATCH` | `/api/reports/{damageReport}/status` | Petugas, Admin (`role:officer,admin`) | **`implemented`** | PRD 03 |
+| `GET` | `/api/criteria` | Petugas, Pakar, Admin (`role:officer,expert,admin`) | **`implemented`** | PRD 03 |
+| `POST` | `/api/criteria` | Admin (`role:admin`) | **`implemented`** | PRD 03 |
 | `GET` | `/api/road-segments` | Publik | `planned` | PRD 04 |
 | `GET` | `/api/road-segments/{id}` | Publik | `planned` | PRD 04 |
 | `GET` | `/api/reports` | Publik (hanya `verified`) / Petugas & Admin (semua) | `planned` | PRD 04 |
 | `POST` | `/api/reports` | Pelapor, Petugas, Admin (`auth:sanctum`, throttle) | `planned` | PRD 04 |
-| `GET` | `/api/reports/{id}` | Publik (terbatas jika `verified`) / Pemilik / Petugas & Admin | `planned` | PRD 04 |
-| `PATCH` | `/api/reports/{id}/status` | Petugas, Admin | `planned` | PRD 04 |
-| `GET` | `/api/criteria` | Login (`auth:sanctum`) | `planned` | PRD 05 |
 | `GET` | `/api/criterion-weight-versions` | Petugas, Pakar, Admin | `planned` | PRD 05 |
 | `POST` | `/api/decision-runs` | Admin (atau Petugas berizin) | `planned` | PRD 05 |
 | `GET` | `/api/decision-runs` | Petugas, Pakar, Admin | `planned` | PRD 05 |

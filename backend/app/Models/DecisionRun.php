@@ -50,3 +50,4 @@ class DecisionRun extends Model
         return $this->hasMany(DecisionRunItem::class, 'decision_run_id');
     }
 }
+

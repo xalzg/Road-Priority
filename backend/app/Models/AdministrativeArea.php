@@ -40,3 +40,4 @@ class AdministrativeArea extends Model
         return $this->hasMany(RoadSegment::class, 'administrative_area_id');
     }
 }
+

@@ -68,3 +68,4 @@ class DamageAssessment extends Model
         return $this->belongsTo(User::class, 'assessed_by');
     }
 }
+

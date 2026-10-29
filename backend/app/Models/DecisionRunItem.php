@@ -44,3 +44,4 @@ class DecisionRunItem extends Model
         return $this->belongsTo(RoadSegment::class, 'road_segment_id');
     }
 }
+

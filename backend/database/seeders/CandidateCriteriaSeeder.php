@@ -112,3 +112,4 @@ class CandidateCriteriaSeeder extends Seeder
         }
     }
 }
+

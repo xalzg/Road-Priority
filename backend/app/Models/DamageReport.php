@@ -97,3 +97,4 @@ class DamageReport extends Model
         return $this->hasMany(DamageAssessment::class, 'damage_report_id');
     }
 }
+

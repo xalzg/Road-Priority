@@ -356,3 +356,4 @@ class DatabaseSchemaIntegrityTest extends TestCase
         $this->assertTrue(DamageAssessment::firstOrFail()->is_demo);
     }
 }
+

@@ -37,3 +37,4 @@ class ReportPhoto extends Model
         return $this->belongsTo(DamageReport::class, 'damage_report_id');
     }
 }
+

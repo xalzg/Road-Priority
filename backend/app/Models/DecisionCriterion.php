@@ -12,6 +12,19 @@ class DecisionCriterion extends Model
 
     public const TYPE_BENEFIT = 'benefit';
     public const TYPE_COST = 'cost';
+    public const CRITERION_TYPES = [
+        self::TYPE_BENEFIT,
+        self::TYPE_COST,
+    ];
+
+    public const DATA_TYPE_ORDINAL = 'ordinal';
+    public const DATA_TYPE_NUMERIC = 'numeric';
+    public const DATA_TYPE_INTEGER = 'integer';
+    public const DATA_TYPES = [
+        self::DATA_TYPE_ORDINAL,
+        self::DATA_TYPE_NUMERIC,
+        self::DATA_TYPE_INTEGER,
+    ];
 
     protected $table = 'decision_criteria';
 
@@ -51,3 +64,4 @@ class DecisionCriterion extends Model
         return $this->hasMany(AhpPairwiseComparison::class, 'criterion_b_id');
     }
 }
+

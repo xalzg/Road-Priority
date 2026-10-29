@@ -235,3 +235,4 @@ erDiagram
 | `decision_runs` $\rightarrow$ `decision_run_items` | `decision_run_id` | Tidak | `CASCADE` | Item hasil merupakan bagian dari satu kesatuan eksekusi `decision_runs`. |
 | `road_segments` $\rightarrow$ `decision_run_items` | `road_segment_id` | Tidak | **`RESTRICT`** | Ruas jalan yang pernah menjadi alternatif dalam histori keputusan tidak boleh dihapus. |
 | `users` $\rightarrow$ seluruh tabel transaksi/histori | `reporter_id`, `verified_by`, `changed_by`, `assessed_by`, `created_by`, `approved_by`, `expert_id`, `executed_by`, `actor_id` | Ya | `SET NULL` | Jika akun pengguna dinonaktifkan/dihapus, seluruh histori laporan, penilaian, bobot, keputusan, dan audit log tetap utuh. |
+

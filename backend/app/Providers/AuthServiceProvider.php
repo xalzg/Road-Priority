@@ -2,8 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\CriterionWeightVersion;
+use App\Models\DamageReport;
+use App\Models\DecisionCriterion;
+use App\Models\User;
+use App\Policies\CriterionWeightVersionPolicy;
+use App\Policies\DamageReportPolicy;
+use App\Policies\DecisionCriterionPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -13,7 +20,10 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
+        User::class => UserPolicy::class,
+        DamageReport::class => DamageReportPolicy::class,
+        DecisionCriterion::class => DecisionCriterionPolicy::class,
+        CriterionWeightVersion::class => CriterionWeightVersionPolicy::class,
     ];
 
     /**
@@ -24,7 +34,5 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
-
-        //
     }
 }

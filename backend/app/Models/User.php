@@ -58,6 +58,31 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
+    public function hasRole(string ...$roles): bool
+    {
+        return $this->is_active && in_array($this->role, $roles, true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(self::ROLE_ADMIN);
+    }
+
+    public function isOfficer(): bool
+    {
+        return $this->hasRole(self::ROLE_OFFICER);
+    }
+
+    public function isExpert(): bool
+    {
+        return $this->hasRole(self::ROLE_EXPERT);
+    }
+
+    public function isReporter(): bool
+    {
+        return $this->hasRole(self::ROLE_REPORTER);
+    }
+
     public function reportedDamageReports(): HasMany
     {
         return $this->hasMany(DamageReport::class, 'reporter_id');

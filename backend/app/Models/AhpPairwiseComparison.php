@@ -42,3 +42,4 @@ class AhpPairwiseComparison extends Model
         return $this->belongsTo(DecisionCriterion::class, 'criterion_b_id');
     }
 }
+

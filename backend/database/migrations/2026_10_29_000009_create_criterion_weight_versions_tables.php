@@ -89,3 +89,4 @@ return new class extends Migration
         Schema::dropIfExists('criterion_weight_versions');
     }
 };
+
