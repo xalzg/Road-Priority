@@ -60,3 +60,4 @@ Saat membaca setiap artikel yang lolos seleksi, catat dalam tabel berikut untuk 
 4. **Regulasi Jalan:** UU No. 38 Tahun 2004 tentang Jalan (beserta perubahan UU No. 2 Tahun 2022) dan PP No. 34 Tahun 2006 tentang Jalan *(untuk definisi fungsi arteri, kolektor, lokal, lingkungan dan status kewenangan jalan)*.
 5. **Privasi Data:** UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).
 6. **Panduan Survei Kondisi Jalan:** Manual/Panduan Survei Kondisi Jalan Direktorat Jenderal Bina Marga (metode SDI, No. SMD-03/RCS atau dokumen pedoman terbaru yang berlaku).
+

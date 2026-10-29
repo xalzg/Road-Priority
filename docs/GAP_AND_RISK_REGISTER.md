@@ -35,3 +35,4 @@
 | R-10 | Agen AI mengarang data atau klaim tes | Tinggi | Seluruh klaim tes disertai keluaran terminal nyata; data contoh di `reference.json` diberi label ilustratif dan `SnapshotService` menolak `is_demo = true` pada run resmi. |
 | R-11 | Pelanggaran ketentuan basemap | Sedang | OSM Tile Usage Policy telah diverifikasi di `DATA_SOURCE_REGISTER.md` (DS-03). |
 | R-12 | Waktu terbatas untuk survei, pakar, responden | Tinggi | Draf `FIELD_PROTOCOL.md` telah disiapkan sejak PRD 01 agar kegiatan lapangan dan rekrutmen pakar dapat segera berjalan paralel. |
+

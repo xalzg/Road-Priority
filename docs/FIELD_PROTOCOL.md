@@ -87,3 +87,4 @@ Digunakan apabila data LHR resmi tidak tersedia untuk seluruh ruas sampel (Opsi 
    - Hindari memotret wajah pejalan kaki atau pelat nomor kendaraan dari jarak dekat.
    - Sistem akan menghapus metadata EXIF pada versi publik dan menyediakan fitur sembunyikan foto (`is_public = false` secara bawaan).
 4. **Perizinan:** untuk jalan di dalam klaster tertutup yang dikelola estate management, lakukan pengamatan hanya pada ruas terbuka untuk umum atau minta izin pengelola setempat terlebih dahulu.
+

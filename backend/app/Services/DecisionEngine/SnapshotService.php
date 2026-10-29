@@ -280,3 +280,4 @@ class SnapshotService
         return json_decode(json_encode($value), true);
     }
 }
+

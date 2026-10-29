@@ -1,67 +1,65 @@
 # PROJECT_STATUS — RoadPriority
 
-Diperbarui: 2026-10-29 19:25 WIB oleh sesi agen (Antigravity)
+Diperbarui: 2026-10-29 19:38 WIB oleh sesi agen (Antigravity)
 
 ## Tahap aktif
 
-- **PRD 01 (Bootstrap Fondasi Proyek + Audit Sumber Data & Kelayakan Master PRD v2.0):** **selesai**, menunggu konfirmasi pengguna atas usulan keputusan terbuka (`D-02`, `D-03`, `D-04`, `D-06`, `D-07`, `D-08`, `D-09`, `D-10`) di [DECISIONS.md](DECISIONS.md).
-- **PRD 05 (Mesin Keputusan Inti AHP-TOPSIS — Pure Service Layer & Verifikasi Independen):** **selesai diimplementasikan dan lulus seluruh 11 kategori tes minimum** pada cabang `prd-05-ahp-topsis-engine`. Integrasi ke tabel database (`decision_runs`, `decision_run_items`) akan dilakukan setelah skema PRD 02 dibuat.
+- **PRD 01 (Foundation & Project Bootstrap + Audit Sumber Data):** **selesai dan disetujui**.
+- **PRD 02 (Database Design & API Contract):** **selesai diimplementasikan dan diverifikasi** pada cabang `prd-02-database-and-api` (menunggu persetujuan penutupan tahap dari pengguna sebelum mulai PRD 03).
+- **PRD 05 (Mesin Keputusan Inti AHP-TOPSIS — Pure Service Layer):** **selesai diimplementasikan dan teruji unit** (`80` unit test mesin keputusan lulus).
 
 ## Ringkasan kondisi
 
-1. Fondasi monorepo (`backend/` Laravel 9.52.22, `frontend/` React 19 + Vite 8, database MariaDB 10.4.32 `roadpriority`) berjalan normal dan terhubung melalui endpoint `GET /api/health`.
-2. Seluruh dokumen keluaran audit PRD 01 (`PROJECT_AUDIT.md`, `DATA_SOURCE_REGISTER.md`, `DATA_DICTIONARY.md`, `GAP_AND_RISK_REGISTER.md`, `FIELD_PROTOCOL.md`, `LITERATURE_PLAN.md`, `DECISIONS.md`) telah dibuat berdasarkan verifikasi nyata terhadap lingkungan lokal dan kebijakan sumber data.
-3. Mesin perhitungan murni AHP-TOPSIS (`AhpService`, `TopsisService`, `SensitivityService`, `SnapshotService`, `RankCorrelation`, `InputHasher`) telah dibangun di `backend/app/Services/DecisionEngine/`, diverifikasi terhadap skrip referensi independen Python (`backend/tests/Reference/ahp_topsis_reference.py` $\rightarrow$ `backend/tests/Fixtures/reference.json`), dan didokumentasikan di `docs/FORMULAS.md`.
+1. **Database & Skema (PRD 02):** 12 berkas migration baru (total 16 migration bersama bawaan Laravel) membentuk 14 tabel inti (`users`, `administrative_areas`, `road_segments`, `damage_reports`, `report_photos`, `report_status_histories`, `damage_assessments`, `decision_criteria`, `criterion_weight_versions`, `criterion_weight_items`, `ahp_pairwise_comparisons`, `decision_runs`, `decision_run_items`, `audit_logs`).
+2. **Model Eloquent & Integritas:** 14 model Eloquent dengan proteksi *mass assignment*, relasi lengkap, validasi domain (`DamageAssessment` wajib memiliki segmen atau laporan), serta aturan foreign key yang melindungi histori (`RESTRICT` untuk induk histori/keputusan, `SET NULL` untuk aktor `users`).
+3. **Database Pengujian Terpisah:** `backend/phpunit.xml` menggunakan database khusus **`roadpriority_test`**, sehingga pengujian otomatis (`RefreshDatabase`) tidak pernah menghapus atau mengubah isi database development **`roadpriority`**.
+4. **Kontrak API & Endpoint Health:** `docs/API_CONTRACT.md`, `docs/ERD.md`, `docs/DATABASE_SCHEMA.md`, dan `docs/DATA_DICTIONARY.md` telah selaras penuh. Endpoint `GET /api/health` tetap aktif dan lulus uji.
 
 ## Hasil build dan tes terakhir
 
 | Perintah | Hasil | Tanggal |
 |---|---|---|
-| `python Reference\ahp_topsis_reference.py > Fixtures\reference.json` | Sukses membuat fixture referensi independen (10.287 byte, tanpa pembulatan) | 2026-10-29 19:14 WIB |
-| `php artisan test` | **`80 passed` (0 failed)** dalam `0.39s` (`AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `HealthEndpointTest`, `ExampleTest`) | 2026-10-29 19:19 WIB |
-| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` | 2026-10-29 19:03 WIB |
+| `php artisan migrate` (pada `roadpriority`) | 16 migration berstatus `Ran` (4 bawaan + 12 migration PRD 02) | 2026-10-29 19:31 WIB |
+| `php artisan migrate:rollback --step=12 && php artisan migrate` | Rollback dan re-migrate 12 migration PRD 02 berhasil tanpa error | 2026-10-29 19:31 WIB |
+| `php artisan test` (pada `roadpriority_test`) | **`88 passed` (0 failed)** dalam `2.40s` (`DatabaseSchemaIntegrityTest`, `HealthEndpointTest`, `AhpServiceTest`, `TopsisServiceTest`, `SensitivityServiceTest`, `SnapshotServiceTest`, `ExampleTest`) | 2026-10-29 19:35 WIB |
+| `npm run lint` (`frontend/`) | `Found 0 warnings and 0 errors` | 2026-10-29 19:24 WIB |
 | `npm run build` (`frontend/`) | `built in 151ms` | 2026-10-29 19:03 WIB |
 
-## Requirement dan acceptance criteria
+## Requirement dan acceptance criteria PRD 02
 
-| ID / Butir | Status | Bukti |
+| Kriteria (PRD 02 §13) | Status | Bukti |
 |---|---|---|
-| PRD 01 Bootstrap (10 acceptance criteria) | **Terpenuhi** | Tag `prd-01-done`, `HealthEndpointTest`, uji headless Chrome |
-| PRD 01 Master PRD (Audit repo, sumber data, kamus data, risiko, protokol lapangan, rencana literatur) | **Terpenuhi** | `docs/PROJECT_AUDIT.md`, `docs/DATA_SOURCE_REGISTER.md`, `docs/DATA_DICTIONARY.md`, `docs/GAP_AND_RISK_REGISTER.md`, `docs/FIELD_PROTOCOL.md`, `docs/LITERATURE_PLAN.md` |
-| PRD 05 Tes Minimum #1 (Matriks semua 1 $\rightarrow$ bobot sama, $CI=0$) | **Terpenuhi** | `AhpServiceTest::test_all_ones_matrix_gives_equal_weights_and_zero_ci` |
-| PRD 05 Tes Minimum #2 (Matriks konsisten sempurna $a_{ij}=w_i/w_j \rightarrow CR \approx 0$) | **Terpenuhi** | `AhpServiceTest::test_perfectly_consistent_matrix_has_cr_near_zero_and_recovers_weights` |
-| PRD 05 Tes Minimum #3 (Contoh Lampiran C cocok dalam toleransi $\le 10^{-6}$) | **Terpenuhi** | `AhpServiceTest::test_lampiran_c_matches_independent_reference`, `TopsisServiceTest::test_lampiran_c_matches_independent_reference`, `SensitivityServiceTest::test_equal_weights_scenario_matches_lampiran_c5` |
-| PRD 05 Tes Minimum #4 (Matriks inkonsisten $CR > 0{,}10$ ditandai & ditolak pada run resmi) | **Terpenuhi** | `AhpServiceTest::test_inconsistent_matrix_is_flagged`, `AhpServiceTest::test_consistency_threshold_boundary_matches_reference`, `SnapshotServiceTest::test_official_run_rejects_unapproved_or_inconsistent_weights` |
-| PRD 05 Tes Minimum #5 (Kriteria benefit & cost menghasilkan solusi ideal benar) | **Terpenuhi** | `TopsisServiceTest::test_ideal_solutions_respect_benefit_and_cost` |
-| PRD 05 Tes Minimum #6 (Kolom konstan, satu alternatif, matriks kosong ditangani) | **Terpenuhi** | `TopsisServiceTest::test_constant_column_is_flagged_and_does_not_break`, `test_zero_column_sets_normalized_to_zero_and_flags_criterion`, `test_single_alternative_is_rejected`, `test_empty_alternatives_and_empty_criteria_are_rejected` |
-| PRD 05 Tes Minimum #7 (Tie-breaking deterministik) | **Terpenuhi** | `TopsisServiceTest::test_tie_breaking_uses_key_criterion_then_code`, `test_tie_breaking_cost_key_criterion_prefers_smaller_value` |
-| PRD 05 Tes Minimum #8 (Dua run dengan input identik menghasilkan hasil & hash identik) | **Terpenuhi** | `TopsisServiceTest::test_identical_input_gives_identical_result_and_hash`, `SnapshotServiceTest::test_snapshot_freezes_inputs_and_reproduces_identically` |
-| PRD 05 Tes Minimum #9 (Membuat versi bobot baru tidak mengubah hasil run lama) | **Terpenuhi** | `TopsisServiceTest::test_new_weights_do_not_alter_previous_result`, `SnapshotServiceTest::test_creating_new_weight_version_does_not_change_old_snapshot` |
-| PRD 05 Tes Minimum #10 (Invarian $\sum w_j = 1$ dan $0 \le C_i \le 1$) | **Terpenuhi** | `TopsisServiceTest::test_invariants_on_seeded_random_data` (200 run acak ber-seed tetap) |
-| PRD 05 Tes Minimum #11 (Dibandingkan dengan hitungan independen pada dataset acuan) | **Terpenuhi** | `backend/tests/Reference/ahp_topsis_reference.py` & `backend/tests/Fixtures/reference.json` |
-| PRD 05 Persyaratan DB & API (`criterion_weight_versions`, `decision_runs`, endpoint `/api/v1/decision-runs`) | **Belum (menunggu PRD 02 & PRD 03)** | Akan dibuat setelah skema database PRD 02 disetujui |
+| ERD sesuai dengan model data aktual | **Terpenuhi** | [`docs/ERD.md`](ERD.md) |
+| Seluruh entitas inti memiliki definisi kolom dan relasi | **Terpenuhi** | [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md), [`docs/DATA_DICTIONARY.md`](DATA_DICTIONARY.md), 14 model di `backend/app/Models/` |
+| Migration dapat dijalankan pada database pengujian kosong | **Terpenuhi** | `DatabaseSchemaIntegrityTest::test_test_suite_uses_dedicated_test_database_and_migrates_all_tables` (`roadpriority_test`) |
+| Foreign key, unique index, dan nullable field telah diverifikasi | **Terpenuhi** | `DatabaseSchemaIntegrityTest` (8 skenario integritas skema lulus) |
+| Model Eloquent memiliki relasi yang sesuai | **Terpenuhi** | `DatabaseSchemaIntegrityTest::test_nullable_fields_and_core_eloquent_relationships_work` & `test_decision_run_links_to_weight_version_and_enforces_unique_segment_and_rank` |
+| API contract mendokumentasikan endpoint dan format respons | **Terpenuhi** | [`docs/API_CONTRACT.md`](API_CONTRACT.md) |
+| Keputusan geospasial telah ditetapkan dan didokumentasikan | **Terpenuhi** | `DEC-008` & `DEC-010` di [`docs/DECISIONS.md`](DECISIONS.md) serta [`docs/DATABASE_SCHEMA.md`](DATABASE_SCHEMA.md) §1.2 |
+| Data histori keputusan dapat ditelusuri ke versi bobot dan snapshot input | **Terpenuhi** | `DecisionRun`, `DecisionRunItem`, `CriterionWeightVersion`, `SnapshotServiceTest`, dan `DatabaseSchemaIntegrityTest` |
+| Endpoint health tetap bekerja | **Terpenuhi** | `HealthEndpointTest` (2 tes lulus) |
+| Tidak ada controller palsu atau data fiktif yang disajikan sebagai implementasi nyata | **Terpenuhi** | Hanya `HealthController` yang ada di `app/Http/Controllers/Api/`; data seeder contoh berada di `DemoSimulationSeeder` dengan label eksplisit `is_demo = true` dan `data_origin = 'demo'` |
+| Test report dan `PROJECT_STATUS.md` diperbarui | **Terpenuhi** | Dokumen ini |
 
 ## Perubahan database dan endpoint terakhir
 
-Tidak ada perubahan tabel database atau route API pada langkah ini (tetap 4 tabel migration bawaan Laravel dan endpoint `GET /api/health`).
+- **Migration baru (`backend/database/migrations/`):** `2026_10_29_000001` s.d. `2026_10_29_000012` (12 berkas migration).
+- **Model Eloquent (`backend/app/Models/`):** `User`, `AdministrativeArea`, `RoadSegment`, `DamageReport`, `ReportPhoto`, `ReportStatusHistory`, `DamageAssessment`, `DecisionCriterion`, `CriterionWeightVersion`, `CriterionWeightItem`, `AhpPairwiseComparison`, `DecisionRun`, `DecisionRunItem`, `AuditLog`.
+- **Seeder (`backend/database/seeders/`):** `CandidateCriteriaSeeder`, `DemoSimulationSeeder`.
+- **Endpoint aktif:** `GET /api/health` (endpoint lain di `docs/API_CONTRACT.md` berstatus `planned` untuk PRD 03–06).
 
 ## Issue terbuka
 
 | ID | Keparahan | Deskripsi | Langkah reproduksi / Mitigasi |
 |---|---|---|---|
-| ISS-01 | Sedang | PHP 8.0.30 & Laravel 9.52.22 memiliki 19 advisory keamanan pada `composer audit` (DEC-002) | `cd backend && composer audit`; wajib upgrade PHP $\ge 8.2$ sebelum deployment publik |
-| ISS-02 | Rendah | `ST_Distance_Sphere(POINT, LINESTRING)` menghasilkan `ERROR 1815` pada MariaDB 10.4.32 (DEC-008) | Gunakan `MBRIntersects` di SQL + perhitungan jarak titik-ke-segmen dalam meter di service layer PHP pada PRD 04 |
+| ISS-01 | Sedang | PHP 8.0.30 & Laravel 9.52.22 memiliki 19 advisory keamanan pada `composer audit` (`DEC-002`) | Aman untuk pengembangan lokal; wajib upgrade PHP $\ge 8.2$ sebelum deployment publik |
+| ISS-02 | Rendah | `ST_Distance_Sphere(POINT, LINESTRING)` menghasilkan `ERROR 1815` pada MariaDB 10.4.32 (`DEC-008`, `DEC-010`) | Telah dimitigasi dengan penyimpanan `geometry_geojson` + indeks centroid `DECIMAL(10,7)` dan perhitungan jarak titik-ke-garis di PHP pada PRD 04 |
 
 ## Keputusan menunggu persetujuan
 
-Lihat bagian 2 pada [docs/DECISIONS.md](DECISIONS.md):
-- **D-02:** Konfirmasi cakupan administratif wilayah studi BSD (mis. Kecamatan Serpong, Kota Tangerang Selatan, atau daftar kelurahan spesifik).
-- **D-03 & D-04:** Konfirmasi penggunaan geometri OSM (ODbL) + pencatatan atribut `road_authority` per ruas.
-- **D-06:** Pilihan perlakuan kriteria **K4** (*Opsi K4-a*: rubrik observasi kepadatan lalu lintas 1–5 di lapangan, atau *Opsi K4-b*: keluarkan K4 sehingga memakai 6 kriteria).
-- **D-07, D-08, D-09, D-10:** Konfirmasi panel pakar & agregasi *geometric mean*, draf protokol lapangan `SDI-ADAPTED-1.0`, kebijakan eksklusi data hilang, dan metodologi pengembangan/penelitian.
+- Konfirmasi nilai spesifik untuk **D-02** (daftar kecamatan/kelurahan wilayah studi BSD), **D-05** (kebijakan verifikasi email & rate limit pelapor untuk PRD 03), dan **D-06** (pilihan perlakuan kriteria K4). Lihat [`docs/DECISIONS.md`](DECISIONS.md) §2.
 
 ## Langkah berikutnya yang disarankan
 
-1. Tinjau dan setujui usulan keputusan `D-02`, `D-03`, `D-04`, `D-06`..`D-10` di `docs/DECISIONS.md`.
-2. Gabungkan cabang `prd-05-ahp-topsis-engine` atau lanjutkan ke **PRD 02 (Arsitektur, Database Migration, Model, Seeder Referensi & Demo Berlabel, dan Kontrak API `/api/v1`)**.
-3. Mulai aktivitas jalur non-kode secara paralel: unduh poligon batas wilayah dari Ina-Geoportal BIG & ekstrak jalan OSM wilayah studi, serta konsultasikan `docs/FIELD_PROTOCOL.md` kepada dosen pembimbing.
+1. Setujui penutupan **PRD 02**.
+2. Lanjutkan ke **PRD 03 — Backend, Autentikasi, dan Hak Akses** (implementasi autentikasi Sanctum, Policy per peran `reporter`/`officer`/`expert`/`admin`, Form Request validation, handler format error konsisten, audit logger service, rate limiting, serta matriks feature test peran $\times$ endpoint dan uji IDOR).

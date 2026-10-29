@@ -49,3 +49,4 @@ Sesuai amanat Master PRD §9 & §11 (`[PERLU VERIFIKASI di PRD 01]`), dilakukan 
 4. **Implikasi arsitektur untuk PRD 02 & PRD 04 (map-matching laporan ke ruas jalan):**
    - Kolom geometri tetap menggunakan `POINT` dan `LINESTRING` dengan `SPATIAL INDEX` untuk penyaringan kotak pembatas cepat (`MBRIntersects`).
    - Perhitungan jarak presisi dalam meter dari titik laporan ke segmen garis (`segment_match_distance_m`) **wajib dihitung di service layer PHP** (proyeksi equirectangular lokal / haversine point-to-segment terhadap kandidat ruas hasil filter bounding box), **bukan** lewat `ST_Distance_Sphere(POINT, LINESTRING)` di SQL.
+

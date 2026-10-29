@@ -156,3 +156,4 @@ Rumus ini identik dengan $1 - \frac{6 \sum d_i^2}{m(m^2 - 1)}$ ketika tidak ada 
 ## 5. Verifikasi terhadap Hitungan Independen (Lampiran C)
 
 Skrip `backend/tests/Reference/ahp_topsis_reference.py` menghitung contoh Lampiran C menggunakan metode yang berbeda dari PHP (akar polinomial karakteristik $\det(A - \lambda I) = 0$ dengan pemindaian + bisection serta eliminasi Gauss, tanpa NumPy). Selisih maksimum antara PHP (`AhpService`, `TopsisService`, `SensitivityService`) dan fixture Python (`backend/tests/Fixtures/reference.json`) adalah $< 10^{-12}$, jauh di bawah batas toleransi $10^{-6}$ pada indikator T4.
+

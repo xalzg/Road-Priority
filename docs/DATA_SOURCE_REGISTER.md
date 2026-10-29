@@ -36,3 +36,4 @@ Berdasarkan pemeriksaan sumber data di atas, ditetapkan penilaian kelayakan beri
    - **Rawan tidak tersedia sebagai data sekunder per ruas:** **K4** (Intensitas pengguna jalan / volume lalu lintas). Data LHR resmi umumnya hanya tersedia pada jalan arteri/kolektor utama, bukan seluruh jalan lokal/kawasan. Oleh karena itu, untuk **D-06**, diusulkan salah satu dari dua opsi yang harus disetujui dosen pembimbing:
      - *Opsi K4-a:* Gunakan skala observasi kelas kepadatan lalu lintas saat survei lapangan (`damage_assessments`) dengan rubrik 1–5 yang terdokumentasi.
      - *Opsi K4-b:* Keluarkan K4 jika tidak dapat diukur secara konsisten pada seluruh ruas sampel, sehingga menyisakan 6 kriteria (15 pasangan AHP) yang seluruhnya memiliki sumber data kuat.
+

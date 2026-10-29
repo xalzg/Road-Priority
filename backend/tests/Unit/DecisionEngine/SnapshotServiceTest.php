@@ -149,3 +149,4 @@ class SnapshotServiceTest extends TestCase
         }
     }
 }
+
