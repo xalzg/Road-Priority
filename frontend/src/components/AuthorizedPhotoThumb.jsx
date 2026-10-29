@@ -60,3 +60,4 @@ export default function AuthorizedPhotoThumb({ photo, alt = 'Foto kerusakan jala
     </a>
   )
 }
+
