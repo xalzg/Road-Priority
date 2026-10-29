@@ -26,3 +26,4 @@ class StoreWeightVersionRequest extends FormRequest
         ];
     }
 }
+

@@ -14,6 +14,29 @@ class DamageAssessment extends Model
     public const STATUS_DRAFT = 'draft';
     public const STATUS_FINAL = 'final';
 
+    public const NON_DEMO_SOURCES = [
+        'field_survey',
+        'field_inspection',
+        'report_verification',
+        'official_secondary',
+        'public_dataset',
+    ];
+
+    public const DEMO_SOURCES = [
+        'demo_fixture',
+        'demo',
+    ];
+
+    public const ASSESSMENT_SOURCES = [
+        'field_survey',
+        'field_inspection',
+        'report_verification',
+        'official_secondary',
+        'public_dataset',
+        'demo_fixture',
+        'demo',
+    ];
+
     protected $fillable = [
         'road_segment_id',
         'damage_report_id',

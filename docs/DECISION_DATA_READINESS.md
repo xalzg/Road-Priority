@@ -34,3 +34,4 @@ Sesuai **PRD 05 §6.1 & §7**:
 1. Baris pada `road_segments`, `damage_reports`, dan `damage_assessments` yang berasal dari `DemoSimulationSeeder` ditandai `is_demo = true` dan `data_origin = 'demo'`.
 2. Pada eksekusi keputusan resmi (`is_simulation = false`), `DecisionDataProvider` menyaring `where('is_demo', false)` dan `SnapshotService::validateDataOriginForRun()` menolak setiap alternatif berlabel demo dengan kode error `demo_data_in_official_run` (`422`).
 3. Data demo hanya dapat dievaluasi apabila pengguna secara eksplisit memilih mode simulasi (`is_simulation = true`).
+

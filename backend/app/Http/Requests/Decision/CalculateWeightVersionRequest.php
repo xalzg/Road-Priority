@@ -34,3 +34,4 @@ class CalculateWeightVersionRequest extends FormRequest
         ];
     }
 }
+

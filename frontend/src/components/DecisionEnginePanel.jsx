@@ -35,6 +35,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
   const [assessSafety, setAssessSafety] = useState('3')
   const [assessFunctionScore, setAssessFunctionScore] = useState('3')
   const [assessImpactScore, setAssessImpactScore] = useState('3')
+  const [assessSource, setAssessSource] = useState('field_survey')
+  const [assessProtocol] = useState('SDI-ADAPTED-1.0')
   const [assessSaving, setAssessSaving] = useState(false)
 
   // State form pembuatan & perhitungan AHP
@@ -94,6 +96,22 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
 
   const activeCriteria = criteria.filter((c) => c.is_active)
 
+  const readinessSegments = readiness
+    ? [...(readiness.eligible_segments || []), ...(readiness.incomplete_segments || [])].map(
+        (seg) => ({
+          id: seg.segment_id,
+          road_reference_code: seg.code,
+          name: seg.name,
+          is_demo: Boolean(seg.is_demo),
+        })
+      )
+    : []
+
+  const assessmentSegmentOptions =
+    readinessSegments.length > 0
+      ? readinessSegments
+      : roadSegments.filter((s) => includeDemo || !s.is_demo)
+
   // Pasangan segitiga atas (i < j) dari kriteria aktif
   const upperPairs = []
   for (let i = 0; i < activeCriteria.length; i += 1) {
@@ -130,6 +148,11 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
     setAssessSaving(true)
     setActionBanner(null)
     try {
+      const targetSegment = assessmentSegmentOptions.find(
+        (s) => String(s.id) === String(assessSegmentId)
+      )
+      const isDemoTarget = Boolean(targetSegment?.is_demo)
+
       await recordDamageAssessment({
         road_segment_id: Number(assessSegmentId),
         severity_level: Number(assessSeverity),
@@ -137,8 +160,9 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
         road_function_score: Number(assessFunctionScore),
         impact_score: Number(assessImpactScore),
         status: 'final',
-        assessment_source: 'field_inspection',
-        is_demo: false,
+        assessment_source: isDemoTarget ? 'demo_fixture' : assessSource,
+        protocol_version: assessProtocol,
+        is_demo: isDemoTarget,
       })
       setActionBanner({
         type: 'success',
@@ -168,6 +192,7 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
       const created = res?.data
       setNewVersionName('')
       if (created?.id) {
+        setWeightVersions((prev) => [created, ...prev.filter((v) => v.id !== created.id)])
         setSelectedVersionId(String(created.id))
       }
       setActionBanner({
@@ -464,8 +489,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                     <tr>
                       <th>Kode Ruas</th>
                       <th>Nama Ruas Jalan</th>
-                      <th>Asal Data</th>
-                      <th>Tanggal Asesmen</th>
+                      <th>Asal Data &amp; Sumber</th>
+                      <th>Tanggal &amp; Protokol Asesmen</th>
                       {activeCriteria.map((c) => (
                         <th key={c.code}>
                           {c.code} ({c.criterion_type === 'benefit' ? '+' : '-'})
@@ -486,12 +511,27 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                         </td>
                         <td>{seg.name}</td>
                         <td>
-                          <code>{seg.data_origin || '-'}</code>
+                          <div>
+                            <code>{seg.data_origin || '-'}</code>
+                          </div>
+                          {seg.source_name && (
+                            <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                              {seg.source_name}
+                            </div>
+                          )}
                         </td>
                         <td>
-                          {seg.assessment_date
-                            ? new Date(seg.assessment_date).toLocaleDateString('id-ID')
-                            : 'Belum ada asesmen'}
+                          {seg.assessment_date ? (
+                            <div>
+                              <div>{new Date(seg.assessment_date).toLocaleDateString('id-ID')}</div>
+                              <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                                <code>{seg.assessment_source || '-'}</code> |{' '}
+                                <code>{seg.assessment_protocol || '-'}</code>
+                              </div>
+                            </div>
+                          ) : (
+                            'Belum ada asesmen'
+                          )}
                         </td>
                         {activeCriteria.map((c) => {
                           const v = seg.values?.[c.code]
@@ -540,8 +580,9 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                     onChange={(e) => setAssessSegmentId(e.target.value)}
                   >
                     <option value="">-- Pilih Ruas Jalan --</option>
-                    {roadSegments.map((s) => (
+                    {assessmentSegmentOptions.map((s) => (
                       <option key={s.id} value={s.id}>
+                        {s.is_demo ? '[DATA DEMO] ' : ''}
                         {s.road_reference_code} — {s.name}
                       </option>
                     ))}
@@ -594,6 +635,19 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                     value={assessImpactScore}
                     onChange={(e) => setAssessImpactScore(e.target.value)}
                   />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="assess-source">Sumber Asesmen (Protokol {assessProtocol})</label>
+                  <select
+                    id="assess-source"
+                    value={assessSource}
+                    onChange={(e) => setAssessSource(e.target.value)}
+                  >
+                    <option value="field_survey">field_survey (Survei Lapangan Terstruktur)</option>
+                    <option value="field_inspection">field_inspection (Inspeksi Teknis Petugas)</option>
+                    <option value="report_verification">report_verification (Verifikasi Laporan Warga)</option>
+                    <option value="official_secondary">official_secondary (Dokumen Teknis Sekunder)</option>
+                  </select>
                 </div>
                 <div className="form-group" style={{ alignSelf: 'end' }}>
                   <button type="submit" disabled={assessSaving || !assessSegmentId}>
@@ -781,8 +835,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
               <p className="text-muted">
                 Bandingkan tingkat kepentingan relatif pasangan kriteria aktif ({activeCriteria.length}{' '}
                 kriteria &rarr; {upperPairs.length} pasangan segitiga atas). Nilai resiprokal segitiga
-                bawah ($a_{'{ji}'} = 1 / a_{'{ij}'}$) dan diagonal utama ($a_{'{ii}'} = 1$) diisi otomatis
-                oleh server.
+                bawah (<code>a_ji = 1 / a_ij</code>) dan diagonal utama (<code>a_ii = 1</code>) diisi
+                otomatis oleh server.
               </p>
               <form onSubmit={handleCalculateAhp}>
                 <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
@@ -973,8 +1027,22 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
           {!selectedRunDetail ? (
             <div className="state-box">
               Pilih salah satu riwayat perhitungan pada tab{' '}
-              <strong>3. Eksekusi &amp; Riwayat TOPSIS</strong> untuk melihat rincian matriks $X, R, V$,
-              solusi ideal $A^+, A^-$, jarak $D_i^+, D_i^-$, dan koefisien preferensi $C_i$.
+              <strong>3. Eksekusi &amp; Riwayat TOPSIS</strong> untuk melihat rincian matriks{' '}
+              <code>X, R, V</code>, solusi ideal{' '}
+              <code>
+                A<sup>+</sup>, A<sup>-</sup>
+              </code>
+              , jarak{' '}
+              <code>
+                D<sub>i</sub>
+                <sup>+</sup>, D<sub>i</sub>
+                <sup>-</sup>
+              </code>
+              , dan koefisien preferensi{' '}
+              <code>
+                C<sub>i</sub>
+              </code>
+              .
             </div>
           ) : (
             <div>
@@ -1008,7 +1076,11 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 </div>
               </div>
 
-              <h3>4.1 Tabel Peringkat Prioritas Penanganan Jalan ($D_i^+, D_i^-, C_i$)</h3>
+              <h3>
+                4.1 Tabel Peringkat Prioritas Penanganan Jalan (D<sub>i</sub>
+                <sup>+</sup>, D<sub>i</sub>
+                <sup>-</sup>, C<sub>i</sub>)
+              </h3>
               <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -1016,9 +1088,17 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                       <th>Peringkat</th>
                       <th>Kode Ruas</th>
                       <th>Nama Ruas Jalan</th>
-                      <th>Jarak Ideal Positif ($D_i^+$)</th>
-                      <th>Jarak Ideal Negatif ($D_i^-$)</th>
-                      <th>Skor Preferensi ($C_i$)</th>
+                      <th>
+                        Jarak Ideal Positif (D<sub>i</sub>
+                        <sup>+</sup>)
+                      </th>
+                      <th>
+                        Jarak Ideal Negatif (D<sub>i</sub>
+                        <sup>-</sup>)
+                      </th>
+                      <th>
+                        Skor Preferensi (C<sub>i</sub>)
+                      </th>
                       <th>Kriteria Pendorong Utama</th>
                       <th>Penjelasan Peringkat &amp; Sumber Data</th>
                     </tr>
@@ -1084,16 +1164,27 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                 </>
               )}
 
-              <h3>4.3 Rincian Tahapan Matriks TOPSIS ($X \to R \to V$) &amp; Solusi Ideal ($A^+, A^-$)</h3>
+              <h3>
+                4.3 Rincian Tahapan Matriks TOPSIS (X &rarr; R &rarr; V) &amp; Solusi Ideal (A
+                <sup>+</sup>, A<sup>-</sup>)
+              </h3>
               <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th>Kode Kriteria</th>
                       <th>Tipe</th>
-                      <th>Bobot AHP ($w_j$)</th>
-                      <th>Solusi Ideal Positif ($A_j^+$)</th>
-                      <th>Solusi Ideal Negatif ($A_j^-$)</th>
+                      <th>
+                        Bobot AHP (w<sub>j</sub>)
+                      </th>
+                      <th>
+                        Solusi Ideal Positif (A<sub>j</sub>
+                        <sup>+</sup>)
+                      </th>
+                      <th>
+                        Solusi Ideal Negatif (A<sub>j</sub>
+                        <sup>-</sup>)
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1125,7 +1216,8 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
                       <th>Ruas</th>
                       {(selectedRunDetail.criteria_snapshot || []).map((c) => (
                         <th key={c.code}>
-                          {c.code}: Mentah ($x_{'{ij}'}$) | Normal ($r_{'{ij}'}$) | Terbobot ($v_{'{ij}'}$)
+                          {c.code}: Mentah (x<sub>ij</sub>) | Normal (r<sub>ij</sub>) | Terbobot (v
+                          <sub>ij</sub>)
                         </th>
                       ))}
                     </tr>
@@ -1161,3 +1253,4 @@ export default function DecisionEnginePanel({ currentUser, roadSegments = [] }) 
     </section>
   )
 }
+

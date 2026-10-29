@@ -74,3 +74,4 @@ Hasil perhitungan `AhpService` (terverifikasi identik hingga $< 10^{-9}$ terhada
 - $\lambda_{\max} = 3{,}003695$
 - $CI = 0{,}001847$
 - $CR = \frac{0{,}001847}{0{,}58} = 0{,}003185 \le 0{,}10$ (**Konsisten**)
+

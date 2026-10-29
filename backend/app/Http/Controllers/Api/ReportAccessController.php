@@ -320,6 +320,16 @@ class ReportAccessController extends Controller
         /** @var User|null $viewer */
         $viewer = $request->user('sanctum') ?? $request->user();
 
+        if ($viewer !== null && ! $viewer->is_active) {
+            $viewer->tokens()->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Account is inactive.',
+                'errors' => null,
+            ], 403);
+        }
+
         if (! $this->damageReportPolicy->viewPhoto($viewer, $damageReport, $reportPhoto)) {
             if ($viewer === null) {
                 return response()->json([

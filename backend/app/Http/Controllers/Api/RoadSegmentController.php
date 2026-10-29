@@ -26,7 +26,20 @@ class RoadSegmentController extends Controller
         $validated = $request->validated();
         /** @var User|null $viewer */
         $viewer = $request->user('sanctum') ?? $request->user();
-        $canIncludeDemo = $viewer !== null && $viewer->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
+
+        if ($viewer !== null && ! $viewer->is_active) {
+            $viewer->tokens()->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Account is inactive.',
+                'errors' => null,
+            ], 403);
+        }
+
+        $canIncludeDemo = $viewer !== null
+            && $viewer->is_active
+            && $viewer->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
 
         $query = RoadSegment::query()
             ->where('is_active', true)
@@ -123,7 +136,20 @@ class RoadSegmentController extends Controller
     {
         /** @var User|null $viewer */
         $viewer = $request->user('sanctum') ?? $request->user();
-        $canViewDemo = $viewer !== null && $viewer->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
+
+        if ($viewer !== null && ! $viewer->is_active) {
+            $viewer->tokens()->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Account is inactive.',
+                'errors' => null,
+            ], 403);
+        }
+
+        $canViewDemo = $viewer !== null
+            && $viewer->is_active
+            && $viewer->hasRole(User::ROLE_OFFICER, User::ROLE_EXPERT, User::ROLE_ADMIN);
 
         $query = RoadSegment::query()
             ->with(['administrativeArea:id,name,administrative_level'])

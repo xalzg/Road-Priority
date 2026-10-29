@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Models\CriterionWeightVersion;
+use App\Models\DamageAssessment;
 use App\Models\DamageReport;
 use App\Models\DecisionCriterion;
 use App\Models\DecisionRun;
 use App\Models\User;
 use App\Policies\CriterionWeightVersionPolicy;
+use App\Policies\DamageAssessmentPolicy;
 use App\Policies\DamageReportPolicy;
 use App\Policies\DecisionCriterionPolicy;
 use App\Policies\DecisionRunPolicy;
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         User::class => UserPolicy::class,
         DamageReport::class => DamageReportPolicy::class,
+        DamageAssessment::class => DamageAssessmentPolicy::class,
         DecisionCriterion::class => DecisionCriterionPolicy::class,
         CriterionWeightVersion::class => CriterionWeightVersionPolicy::class,
         DecisionRun::class => DecisionRunPolicy::class,

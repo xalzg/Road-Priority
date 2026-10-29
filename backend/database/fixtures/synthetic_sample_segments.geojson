@@ -1,0 +1,66 @@
+{
+  "_fixture_notice": "SYNTHETIC TEST FIXTURE ONLY — BUKAN DATA PENELITIAN WILAYAH STUDI RESMI. File ini hanya digunakan untuk pengujian otomatis dan demonstrasi --dry-run pada PRD 05.2.",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "road_reference_code": "SYNTH-SEG-001",
+        "name": "[CONTOH UJI] Ruas Arteri Uji Importer A",
+        "road_function": "arteri",
+        "road_authority": "kota",
+        "nearest_facility_meters": 150.5,
+        "source_name": "Fixture Pengujian Otomatis PRD 05.2",
+        "source_reference": "synthetic_sample_segments.geojson"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [106.652, -6.302],
+          [106.655, -6.300],
+          [106.658, -6.298]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "road_reference_code": "SYNTH-SEG-002",
+        "name": "[CONTOH UJI] Ruas Kolektor Uji Importer B",
+        "highway": "secondary",
+        "road_authority": "kabupaten",
+        "nearest_facility_meters": null,
+        "source_name": "Fixture Pengujian Otomatis PRD 05.2",
+        "source_reference": "synthetic_sample_segments.geojson"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [106.660, -6.305],
+          [106.664, -6.305]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "road_reference_code": "SYNTH-SEG-003",
+        "name": "[CONTOH UJI] Ruas Lokal Uji Importer C",
+        "road_function": "lokal",
+        "road_authority": "belum_terverifikasi",
+        "length_meters": 320.0,
+        "nearest_facility_meters": 85.0,
+        "source_name": "Fixture Pengujian Otomatis PRD 05.2",
+        "source_reference": "synthetic_sample_segments.geojson"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [106.645, -6.310],
+          [106.647, -6.312]
+        ]
+      }
+    }
+  ]
+}
+

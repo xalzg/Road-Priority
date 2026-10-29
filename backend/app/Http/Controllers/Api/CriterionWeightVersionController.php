@@ -106,3 +106,4 @@ class CriterionWeightVersionController extends Controller
         ], 200);
     }
 }
+

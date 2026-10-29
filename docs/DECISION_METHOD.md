@@ -45,3 +45,4 @@ Sesuai PRD 05 §1, hasil perhitungan sistem adalah **rekomendasi urutan priorita
 1. Setiap eksekusi `POST /api/decision-runs` membekukan salinan lengkap kriteria, bobot AHP, dan nilai mentah setiap alternatif ke dalam `decision_runs.input_snapshot_reference` serta baris-baris `decision_run_items`.
 2. Sistem menghitung `input_hash` SHA-256 yang tidak bergantung pada urutan pengiriman alternatif di request.
 3. Saat `GET /api/decision-runs/{id}` dipanggil di masa depan—bahkan setelah ada penilaian kondisi jalan baru atau versi bobot kriteria baru—`SnapshotService::reproduce()` menghitung ulang peringkat dari snapshot beku tersebut dan memverifikasi bahwa `input_hash`, skor $C_i$, jarak $D_i^+, D_i^-$, dan urutan peringkat identik hingga toleransi $10^{-12}$ (`reproducibility_verified = true`).
+

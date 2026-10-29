@@ -91,3 +91,4 @@ export async function recordDamageAssessment(payload) {
     body: payload,
   })
 }
+

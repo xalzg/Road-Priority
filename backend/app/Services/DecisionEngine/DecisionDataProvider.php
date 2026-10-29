@@ -121,8 +121,11 @@ class DecisionDataProvider
                 'values' => $values,
                 'is_demo' => (bool) $segment->is_demo || (bool) ($latestAssessment?->is_demo ?? false),
                 'data_origin' => $segment->data_origin,
+                'source_name' => $segment->source_name,
+                'source_reference' => $segment->source_reference,
                 'assessment_id' => $latestAssessment?->id,
                 'assessment_date' => $latestAssessment?->assessment_date?->toIso8601String(),
+                'assessment_source' => $latestAssessment?->assessment_source,
                 'assessment_protocol' => $latestAssessment?->protocol_version,
                 'source_report_ids' => $verifiedReports->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             ];
@@ -169,10 +172,16 @@ class DecisionDataProvider
                 'segment_id' => $alt['segment_id'],
                 'code' => $alt['code'],
                 'name' => $alt['name'],
+                'road_function' => $alt['road_function'],
+                'road_authority' => $alt['road_authority'],
                 'is_demo' => $alt['is_demo'],
                 'data_origin' => $alt['data_origin'],
+                'source_name' => $alt['source_name'],
+                'source_reference' => $alt['source_reference'],
                 'assessment_id' => $alt['assessment_id'],
                 'assessment_date' => $alt['assessment_date'],
+                'assessment_source' => $alt['assessment_source'],
+                'assessment_protocol' => $alt['assessment_protocol'],
                 'source_report_count' => count($alt['source_report_ids']),
                 'values' => $alt['values'],
                 'missing_or_invalid' => $missingOrInvalid,
@@ -272,3 +281,4 @@ class DecisionDataProvider
         return null;
     }
 }
+

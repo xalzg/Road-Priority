@@ -22,21 +22,41 @@ class LocalAdminSeeder extends Seeder
         $configuredPassword = (string) env('INITIAL_ADMIN_PASSWORD', '');
         $generated = false;
 
-        if ($configuredPassword === '') {
-            $configuredPassword = Str::random(20);
-            $generated = true;
-        }
+        /** @var User|null $existing */
+        $existing = User::query()->where('email', $email)->first();
 
-        $admin = User::query()->updateOrCreate(
-            ['email' => $email],
-            [
+        if ($existing === null) {
+            if ($configuredPassword === '') {
+                $configuredPassword = Str::random(20);
+                $generated = true;
+            }
+
+            $admin = new User([
                 'name' => $name,
+                'email' => $email,
                 'password' => Hash::make($configuredPassword),
-                'role' => User::ROLE_ADMIN,
-                'is_active' => true,
                 'email_verified_at' => now(),
-            ]
-        );
+            ]);
+            $admin->role = User::ROLE_ADMIN;
+            $admin->is_active = true;
+            $admin->save();
+            $passwordSource = $generated ? 'generated_ephemeral' : 'env_configured';
+        } else {
+            $admin = $existing;
+            $admin->name = $name;
+            if ($configuredPassword !== '') {
+                $admin->password = Hash::make($configuredPassword);
+                $passwordSource = 'env_configured';
+            } else {
+                $passwordSource = 'unchanged_existing';
+            }
+            if ($admin->email_verified_at === null) {
+                $admin->email_verified_at = now();
+            }
+            $admin->role = User::ROLE_ADMIN;
+            $admin->is_active = true;
+            $admin->save();
+        }
 
         AuditLog::query()->create([
             'actor_id' => $admin->id,
@@ -46,7 +66,7 @@ class LocalAdminSeeder extends Seeder
             'changes_summary' => [
                 'email' => $admin->email,
                 'role' => $admin->role,
-                'password_source' => $generated ? 'generated_ephemeral' : 'env_configured',
+                'password_source' => $passwordSource,
             ],
             'created_at' => now(),
         ]);

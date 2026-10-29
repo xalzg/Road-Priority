@@ -22,3 +22,4 @@ class DecisionRunPolicy
         return $actor->is_active && $actor->hasRole(User::ROLE_OFFICER, User::ROLE_ADMIN);
     }
 }
+

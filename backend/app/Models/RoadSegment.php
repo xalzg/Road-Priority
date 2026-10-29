@@ -20,6 +20,19 @@ class RoadSegment extends Model
         'kawasan_pengembang',
         'belum_terverifikasi',
     ];
+    public const DATA_ORIGINS = [
+        'public_dataset',
+        'official_government',
+        'field_survey',
+        'citizen_report',
+        'demo',
+    ];
+    public const NON_DEMO_DATA_ORIGINS = [
+        'public_dataset',
+        'official_government',
+        'field_survey',
+        'citizen_report',
+    ];
 
     protected $fillable = [
         'administrative_area_id',

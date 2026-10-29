@@ -60,3 +60,4 @@ Dengan bobot AHP Lampiran C ($w_{K1} = 0{,}6483, w_{K2} = 0{,}2297, w_{K5} = 0{,
 | `A4` | 2 | 4 | 100 | `0.2665` | `0.1078` | `0.2880` | **4** |
 
 Hasil di atas diuji otomatis pada `TopsisServiceTest::test_lampiran_c_matches_printed_table` dan `DecisionEngineIntegrationTest::test_full_ahp_topsis_workflow_and_lampiran_c_verification`.
+

@@ -47,3 +47,4 @@ class UpdateDecisionCriterionRequest extends FormRequest
         ];
     }
 }
+
