@@ -1,0 +1,29 @@
+# Rahasia dan konfigurasi lokal
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependensi dan hasil build
+node_modules/
+vendor/
+dist/
+build/
+
+# Laravel
+backend/storage/*.key
+backend/public/hot
+backend/public/storage
+backend/.phpunit.result.cache
+
+# Log dan berkas sementara
+*.log
+npm-debug.log*
+
+# Editor dan OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
